@@ -6,33 +6,39 @@ VNect で推定した姿勢を VRM ファイルに反映するサンプルです
 
 ## 環境構築
 
-- VRM は VRoid からエクスポートしたモデルを使用しています。
+***
+
+VRM は VRoid からエクスポートしたモデルを使用しています。
 
 https://vroid.pixiv.net/
 
-- UniVRM を使用しています。下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
+***
+
+UniVRM を使用しています。下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
 
 https://github.com/dwango/UniVRM/releases
 
-- TensorFlowSharp を使用しています。下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
+***
+
+TensorFlowSharp を使用しています。下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
 
 https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Basic-Guide.md
 
 TensorFlowSharp に含まれる libtensorflow.dll は GPU 用に差し替えると高速化できます。
 
-DLL は下記などで公開されています。
+DLL は下記などで公開されています。 SIMD や CUDA 、 cuDNN がお使いの環境と合ったものを選択してください。
 
 https://github.com/fo40225/tensorflow-windows-wheel
 
-libtensorflow-gpu-windows-x86_64-1.10.0-avx2cuda92cudnn72.7z などのファイル名になっているので、SIMD や CUDA 、 cuDNN がお使いの環境と合ったものを選択してください。
+***
 
-- VNect のウェイトを Caffe 用から TensorFlow 用に変換する方法は以下です
+VNect のウェイトを Caffe 用から TensorFlow 用に変換する方法は以下です
 
 1. 下記のスクリプトで .caffemodel を .pkl に変換します
 
 https://github.com/timctho/VNect-tensorflow/blob/master/caffe_weights_to_pickle.py
 
-2. 下記のスクリプトを修正し、 .pkl を .pb.bytes と .pb.txt に変換します
+2. 下記のスクリプトを修正し、 .pkl を .txt に変換します
 
 https://github.com/timctho/VNect-tensorflow/blob/master/models/vnect_model.py
 
