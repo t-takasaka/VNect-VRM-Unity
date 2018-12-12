@@ -6,21 +6,19 @@ VNect で推定した姿勢を VRM ファイルに反映するサンプルです
 
 ## 環境構築
 
-***
-
-VRM は VRoid からエクスポートしたモデルを使用しています。
+- VRM は VRoid からエクスポートしたモデルを使用しています。
 
 https://vroid.pixiv.net/
 
-***
+- UniVRM を使用しています。
 
-UniVRM を使用しています。下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
+下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
 
 https://github.com/dwango/UniVRM/releases
 
-***
+- TensorFlowSharp を使用しています。
 
-TensorFlowSharp を使用しています。下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
+下記のリポジトリから unitypackage をダウンロードし、 Unity にインポートしてください
 
 https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Basic-Guide.md
 
@@ -30,9 +28,7 @@ DLL は下記などで公開されています。 SIMD や CUDA 、 cuDNN がお
 
 https://github.com/fo40225/tensorflow-windows-wheel
 
-***
-
-VNect のウェイトを Caffe 用から TensorFlow 用に変換する方法は以下です
+- TensorFlowSharp を使うため、 VNect のウェイトを Caffe 用から TensorFlow 用に変換します
 
 1. 下記のスクリプトで .caffemodel を .pkl に変換します
 
@@ -68,5 +64,6 @@ http://gvv.mpi-inf.mpg.de/projects/VNect/
 
 https://github.com/timctho/VNect-tensorflow
 
+## ライセンス
 
-
+ライブラリやモデル、ウェイト、学習データなどのライセンスは各配布元に従ってください。
