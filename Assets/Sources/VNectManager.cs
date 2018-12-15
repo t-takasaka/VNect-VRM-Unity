@@ -16,8 +16,6 @@ class VNectManager {
     private Dictionary<string, JointInfo> jointInfos;
 
     public float[] nnShapeScales;
-    public int nnInputWidth;
-    public int nnInputHeight;
     public float[] nnInputBuff;
 
     public int heatmapWidth;
@@ -34,13 +32,15 @@ class VNectManager {
     public Dictionary<string, Vector3> joint3D = new Dictionary<string, Vector3>();
     public Dictionary<string, bool> extractedJoints = new Dictionary<string, bool>();
 
-    private TFSession session;
     private TFGraph graph;
+    private TFSession session;
+    private TFShape shape;
 
     public void Init(Dictionary<string, JointInfo> jointInfos, bool useMultiScale) {
         this.jointInfos = jointInfos;
 
         nnShapeScales = useMultiScale ? new float[]{ 1.0f, 0.7f } : new float[] { 1.0f };
+        nnInputBuff = new float[NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * PIXEL_SIZE * nnShapeScales.Length];
         heatmapLabelCount = new int[NN_JOINT_COUNT];
 
         //2Dジョイントの初期値は中央に集めておく
@@ -55,10 +55,12 @@ class VNectManager {
         graph = new TFGraph();
         graph.Import(graphModel.bytes);
         session = new TFSession(graph);
+        shape = new TFShape(nnShapeScales.Length, NN_INPUT_WIDTH_MAX, NN_INPUT_HEIGHT_MAX, PIXEL_SIZE);
     }
 
     public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, float joint2DLerp, float joint3DLerp, bool useLabeling) {
-        TFTensor inputTensor = CreateShapes(resizedTexture.GetPixels32());
+        Color32[] pixels = resizedTexture.GetPixels32();
+        TFTensor inputTensor = CreateShapes(pixels);
 
         TFSession.Runner runner = session.GetRunner();
         runner.AddInput(graph["Placeholder"][0], inputTensor);
@@ -72,7 +74,11 @@ class VNectManager {
         heatmapWidth = (int)outputTensor[0].Shape[1];
         heatmapHeight = (int)outputTensor[0].Shape[2];
 
-        heatmapBuff = new float[heatmapHeight, heatmapWidth, NN_JOINT_COUNT, (int)HEATMAP_TYPE.Length];
+        if (heatmapBuff == null){
+            heatmapBuff = new float[heatmapHeight, heatmapWidth, NN_JOINT_COUNT, (int)HEATMAP_TYPE.Length];
+        }else{
+            Array.Clear(heatmapBuff, 0, heatmapBuff.Length);
+        }
         ExtractHeatmaps(nnOutputPtr, nnOutputPtrX, nnOutputPtrY, nnOutputPtrZ);
         Extract2DJoint(jointDistanceLimit, jointThreshold, joint2DLerp, useLabeling);
         Extract3DJoint(joint3DLerp);
@@ -88,20 +94,18 @@ class VNectManager {
         int[] shapeHeight = new int[nnShapeScales.Length];
         for (int i = 0; i < nnShapeScales.Length; ++i) {
             invShapeScales[i] = 1.0f / nnShapeScales[i];
-            shapeWidth[i] = (int)(nnInputWidth * nnShapeScales[i]);
-            shapeHeight[i] = (int)(nnInputHeight * nnShapeScales[i]);
+            shapeWidth[i] = (int)(NN_INPUT_WIDTH_MAX * nnShapeScales[i]);
+            shapeHeight[i] = (int)(NN_INPUT_HEIGHT_MAX * nnShapeScales[i]);
         }
 
-        //pixelsをTFTensorに移すためのバッファ
-        nnInputBuff = new float[nnInputWidth * nnInputHeight * PIXEL_SIZE * nnShapeScales.Length];
-
+        Array.Clear(nnInputBuff, 0, nnInputBuff.Length);
         for (int scaleNum = 0; scaleNum < nnShapeScales.Length; ++scaleNum) {
             //縮小した分だけパディングする
-            int padHeight = (nnInputHeight - shapeHeight[scaleNum]) / 2;
-            int padWidth = (nnInputWidth - shapeWidth[scaleNum]) / 2;
+            int padHeight = (NN_INPUT_HEIGHT_MAX - shapeHeight[scaleNum]) / 2;
+            int padWidth = (NN_INPUT_WIDTH_MAX - shapeWidth[scaleNum]) / 2;
 
             //scalesの分だけdstの書き込み先をずらす
-            int padScale = nnInputWidth * nnInputHeight * scaleNum;
+            int padScale = NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * scaleNum;
 
             for (int y = 0; y < shapeHeight[scaleNum]; ++y) {
                 //縮小後のdstが基準なのでinvScale倍した位置のsrcから色情報を取得する
@@ -109,10 +113,10 @@ class VNectManager {
 
                 for (int x = 0; x < shapeWidth[scaleNum]; ++x) {
                     int srcWidth = (int)(x * invShapeScales[scaleNum]);
-                    Color32 src = pixels[srcHeight * nnInputWidth + srcWidth];
+                    Color32 src = pixels[srcHeight * NN_INPUT_WIDTH_MAX + srcWidth];
 
                     //画像の上下を反転
-                    int flipHeight = ((nnInputHeight - 1) - (padHeight + y)) * nnInputWidth;
+                    int flipHeight = ((NN_INPUT_HEIGHT_MAX - 1) - (padHeight + y)) * NN_INPUT_WIDTH_MAX;
 
                     int dstPos = (padScale + flipHeight + padWidth + x) * PIXEL_SIZE;
                     if (RGB2BGR) {
@@ -130,7 +134,6 @@ class VNectManager {
         }
 
         //バッファからTFTensorを作って返す
-        TFShape shape = new TFShape(nnShapeScales.Length, nnInputWidth, nnInputHeight, PIXEL_SIZE);
         TFTensor tensor = TFTensor.FromBuffer(shape, nnInputBuff, 0, nnInputBuff.Length);
         return tensor;
     }
@@ -218,16 +221,19 @@ class VNectManager {
             }
         }
     }
+
+    private Dictionary<string, Vector2> preFrameJoint2D = new Dictionary<string, Vector2>();
+    private Dictionary<string, float> nearestDistance = new Dictionary<string, float>();
     private unsafe void Heatmap2Joint(float distanceLimit, float jointThreshold, float joint2DLerp) {
-        Dictionary<string, Vector2> joint = new Dictionary<string, Vector2>();
-        Dictionary<string, float> nearestDistance = new Dictionary<string, float>();
+        preFrameJoint2D.Clear();
+        nearestDistance.Clear();
         foreach (string key in jointInfos.Keys) {
-            joint[key] = joint2D[key];
+            preFrameJoint2D[key] = joint2D[key];
             nearestDistance[key] = Mathf.Infinity;
             extractedJoints[key] = false;
         }
 
-
+        Vector2 tmp = new Vector2();
         fixed (float*src = heatmapBuff){
             float* srcPos = src;
             for (int y = 0; y < heatmapHeight; ++y){
@@ -238,7 +244,8 @@ class VNectManager {
 
                         if (v < jointThreshold) { continue; }
 
-                        float w = x - joint[key].x, h = y - joint[key].y;
+                        float w = x - preFrameJoint2D[key].x;
+                        float h = y - preFrameJoint2D[key].y;
                         float distance = w * w + h * h;
 
                         //他のラベルの方が前回のジョイント位置に近い
@@ -248,7 +255,8 @@ class VNectManager {
                         if (distance > distanceLimit) { continue; }
 
                         nearestDistance[key] = distance;
-                        joint2D[key] = Vector2.Lerp(joint[key], new Vector2(x, y), joint2DLerp);
+                        tmp.Set(x, y);
+                        joint2D[key] = Vector2.Lerp(preFrameJoint2D[key], tmp, joint2DLerp);
                         extractedJoints[key] = true;
                     }
                 }
@@ -283,8 +291,11 @@ class VNectManager {
     }
     //ラベリング
     private unsafe void Heatmap2Label(float jointThreshold) {
-        heatmapLabel = new int[NN_JOINT_COUNT, heatmapHeight, heatmapWidth];
-        //Array.Clear(heatmapLabelCount, 0, heatmapLabelCount.Length);
+        if (heatmapLabel == null){
+            heatmapLabel = new int[NN_JOINT_COUNT, heatmapHeight, heatmapWidth];
+        }else{
+            Array.Clear(heatmapLabelCount, 0, heatmapLabelCount.Length);
+        }
 
         int[] counts = new int[NN_JOINT_COUNT];
         fixed (float* src = heatmapBuff){

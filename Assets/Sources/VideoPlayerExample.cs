@@ -154,7 +154,7 @@ public class VideoPlayerExample :MonoBehaviour {
         isPosing = false;
 
         SetEnableFlags();
-        vrm.Update(vnect.joint2D, vnect.joint3D, jointInfos, vnect.extractedJoints, enableJoints, vnect.nnInputWidth, vnect.nnInputHeight);
+        vrm.Update(vnect.joint2D, vnect.joint3D, jointInfos, vnect.extractedJoints, enableJoints, vnect.NN_INPUT_WIDTH_MAX, vnect.NN_INPUT_HEIGHT_MAX);
 
         yield return null;
     }
@@ -184,7 +184,7 @@ public class VideoPlayerExample :MonoBehaviour {
         int scaleNum = 0;
         //NNに入力するデータの確認用
         if(DrawInputTensorBuff){
-            debugRenderer.DebugDrawInputTensorBuff(vnect.nnInputBuff, vnect.nnInputHeight, vnect.nnInputWidth);
+            debugRenderer.DebugDrawInputTensorBuff(vnect.nnInputBuff, vnect.NN_INPUT_HEIGHT_MAX, vnect.NN_INPUT_WIDTH_MAX);
         }
         //NNから出力されたデータの確認用
         if(DebugDrawHeatmap){
@@ -237,20 +237,17 @@ public class VideoPlayerExample :MonoBehaviour {
         top /= videoShortSide;
         bottom /= videoShortSide;
 
-        vnect.nnInputWidth = vnect.NN_INPUT_WIDTH_MAX;
-        vnect.nnInputHeight = vnect.NN_INPUT_HEIGHT_MAX;
-
         src.filterMode = FilterMode.Trilinear;
         src.Apply(true);
 
-        RenderTexture rt = new RenderTexture(vnect.nnInputWidth, vnect.nnInputHeight, 32);
+        RenderTexture rt = new RenderTexture(vnect.NN_INPUT_WIDTH_MAX, vnect.NN_INPUT_HEIGHT_MAX, 32);
         Graphics.SetRenderTarget(rt);
         GL.LoadPixelMatrix(left, right, bottom, top);
         //RotateTexture();
         GL.Clear(true, true, new Color(0, 0, 0, 0));
         Graphics.DrawTexture(new Rect(0, 0, aspectWidth, aspectHeight), src);
 
-        Rect dstRect = new Rect(0, 0, vnect.nnInputWidth, vnect.nnInputHeight);
+        Rect dstRect = new Rect(0, 0, vnect.NN_INPUT_WIDTH_MAX, vnect.NN_INPUT_HEIGHT_MAX);
         Texture2D dst = new Texture2D((int)dstRect.width, (int)dstRect.height, TextureFormat.ARGB32, true);
         dst.ReadPixels(dstRect, 0, 0, true);
         Graphics.SetRenderTarget(null);
