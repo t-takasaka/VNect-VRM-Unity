@@ -27,12 +27,12 @@ public class VideoPlayerExample :MonoBehaviour {
     //サイズを変更した入力画像を複数枚用意する。検出後に平均して推定誤差を減らすため
     public bool UseMultiScale = true;
 
-    //次フレームの入力映像の注目領域として使い、フレーム間の誤差を減らす
-    //不安定なので一旦保留
-    private bool UseBoundingBox = false;
-    
     //閾値以上をラベリングして重心をジョイント候補にする。使わなくてもそこそこ精度は出る
     public bool UseLabeling = false;
+
+    //次フレームの入力映像の注目領域として使い、フレーム間の誤差を減らす
+    //不安定なので一旦保留
+    public bool UseBoundingBox = false;
 
     //VRMに姿勢を反映する場合はtrue
     public bool EnableHead = false;
@@ -145,7 +145,7 @@ public class VideoPlayerExample :MonoBehaviour {
     IEnumerator PoseUpdate(Texture2D texture) {
         //二フレーム目からバウンディングボックスを計算する
         //※最後に計算するとinputTensorとボックスのサイズに差異が出るためOnRenderObjectで範囲外アクセスが発生する
-        if (UseBoundingBox && initialized) { vnect.UpdateBoundingBox(boundingBox, videoWidth, videoHeight); }
+        if (UseBoundingBox && initialized) { vnect.UpdateBoundingBox(ref boundingBox, videoWidth, videoHeight); }
         initialized = true;
 
         Texture2D resizedTexture = ResizeTexture(texture);

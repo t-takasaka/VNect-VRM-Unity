@@ -397,19 +397,20 @@ class VNectManager {
 
     //3Dジョイントの三次元空間上の位置を取得
     private void Extract3DJoint(float joint3DLerp) {
+        float invScaleLen = 1.0f / nnShapeScales.Length;
         foreach (string key in jointInfos.Keys) {
             int _x = (int)joint2D[key].x;
             int _y = (int)joint2D[key].y;
             int _j = jointInfos[key].index;
-            float x = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.X];
-            float y = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.Y];
-            float z = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.Z];
+            float x = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.X] * invScaleLen;
+            float y = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.Y] * invScaleLen;
+            float z = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.Z] * invScaleLen;
             joint3D[key] = Vector3.Lerp(joint3D[key], new Vector3(-x, -y, -z), joint3DLerp);
         }
     }
 
     //推定した姿勢を元にバウンディングボックスを更新する
-    public void UpdateBoundingBox(Rect boundingBox, float videoWidth, float videoHeight) {
+    public void UpdateBoundingBox(ref Rect boundingBox, float videoWidth, float videoHeight) {
         float left = Mathf.Infinity, right = 0.0f;
         float top = Mathf.Infinity, bottom = 0.0f;
 
@@ -451,8 +452,12 @@ class VNectManager {
         halfWidth = halfWidth * 1.2f;
         halfHeight = halfHeight * 1.1f;
         float half = (halfHeight > halfWidth) ? halfHeight : halfWidth;
+
         //入力映像サイズの長辺の正方形は超えないようにする
-        half = Mathf.Min(half, Mathf.Max(videoWidth, videoHeight) / 2);
+        half = Mathf.Min(half, Mathf.Max(videoWidth, videoHeight) * 0.5f);
+
+        //入力映像サイズの短辺の半分未満にならないようにする
+        half = Mathf.Max(half, Mathf.Min(videoWidth, videoHeight) * 0.25f);
 
         left = centerX - half;
         right = centerX + half;
@@ -462,6 +467,7 @@ class VNectManager {
         //※バウンディングボックスは正方形
         //※上下左右の端が入力映像サイズを超えているケースがあり得る
         boundingBox.Set(left, top, right - left, bottom - top);
+       
     }
 
 };

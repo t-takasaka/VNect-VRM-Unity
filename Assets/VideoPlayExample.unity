@@ -391,6 +391,7 @@ MonoBehaviour:
   Joint3DLerp: 0.2
   UseMultiScale: 1
   UseLabeling: 0
+  UseBoundingBox: 1
   EnableHead: 0
   EnableNeck: 1
   EnableArms: 1
@@ -400,7 +401,7 @@ MonoBehaviour:
   EnableKnees: 0
   EnableFoots: 0
   EnableToeBases: 0
-  DrawInputTensorBuff: 0
+  DrawInputTensorBuff: 1
   DebugDrawHeatmap: 0
   DebugDrawHeatmapBuff: 0
   DrawHeatmapLabel: 0
@@ -437,7 +438,7 @@ VideoPlayer:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1571320480}
   m_Enabled: 1
-  m_VideoClip: {fileID: 32900000, guid: 81d4a431c40e51e4ba44b2da5af6503e, type: 3}
+  m_VideoClip: {fileID: 32900000, guid: 5b90ac47a53d44b4ca129d98b9f0a361, type: 3}
   m_TargetCameraAlpha: 1
   m_TargetCamera3DLayout: 0
   m_TargetCamera: {fileID: 0}

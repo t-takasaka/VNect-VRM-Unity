@@ -294,8 +294,6 @@ public class DebugRenderer :MonoBehaviour {
     }
 
     private void CreategizmoJoints(Dictionary<string, JointInfo> jointInfos) {
-        joit3DScale *= 0.5f;
-
         foreach (string key in jointInfos.Keys) {
             gizmoSphere[key] = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             gizmoSphere[key].name = key + "Sphere";
