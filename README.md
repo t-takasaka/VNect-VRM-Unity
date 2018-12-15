@@ -28,6 +28,8 @@ DLL は下記などで公開されています。 SIMD や CUDA 、 cuDNN がお
 
 https://github.com/fo40225/tensorflow-windows-wheel
 
+bin フォルダの tensorflow.dll を libtensorflow.dll にリネームし、既存ファイルと差し替えてください。
+
 - TensorFlowSharp を使うため、 VNect のウェイトを Caffe 用から TensorFlow 用に変換します
 
 1. 下記のスクリプトで .caffemodel を .pkl に変換します
@@ -49,10 +51,10 @@ save_path = saver.save(sess, "./tf_vnect")
 3. freeze_graph.py で Variable を Const に変更します
 
 ```
-python path\to\freeze_graph.py --input_graph=path\to\input_graph.txt --input_checkpoint=path\to\tf_vnect --output_graph=path\to\frozen_graph.bytes --output_node_names=Placeholder,split_2
+python path\to\freeze_graph.py --input_graph=path\to\input_graph.txt --input_checkpoint=path\to\tf_vnect --output_graph=path\to\vnect_frozen.bytes --output_node_names=Placeholder,split_2
 ```
 
-frozen_graph.bytes が出力されるので、 Unity の Resources フォルダに入れてください。
+vnect_frozen.bytes が出力されるので、 Unity の Resources フォルダに入れてください。
 
 ## 参考
 
