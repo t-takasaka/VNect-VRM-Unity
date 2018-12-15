@@ -184,12 +184,16 @@ class VNectManager {
         }
 
         //最小値、最大値
-        for (int y = 0; y < heatmapHeight; ++y) {
-            for (int x = 0; x < heatmapWidth; ++x) {
-                for (int j = 0; j < NN_JOINT_COUNT; ++j) {
-                    float v = heatmapBuff[y, x, j, (int)HEATMAP_TYPE.H];
-                    if (joint2dMin[j] > v) { joint2dMin[j] = v; }
-                    if (joint2dMax[j] < v) { joint2dMax[j] = v; }
+        fixed (float* src = heatmapBuff){
+            float* srcPos = src;
+            for (int y = 0; y < heatmapHeight; ++y){
+                for (int x = 0; x < heatmapWidth; ++x){
+                    for (int j = 0; j < NN_JOINT_COUNT; ++j){
+                        float v = *srcPos;
+                        srcPos += (int)HEATMAP_TYPE.Length;
+                        if (joint2dMin[j] > v) { joint2dMin[j] = v; }
+                        if (joint2dMax[j] < v) { joint2dMax[j] = v; }
+                    }
                 }
             }
         }
@@ -201,11 +205,15 @@ class VNectManager {
         }
 
         //ジョイントごとに0.0f～0.1fの範囲に収める
-        for (int y = 0; y < heatmapHeight; ++y) {
-            for (int x = 0; x < heatmapWidth; ++x) {
-                for (int j = 0; j < NN_JOINT_COUNT; ++j) {
-                    heatmapBuff[y, x, j, (int)HEATMAP_TYPE.H] -= joint2dMin[j];
-                    heatmapBuff[y, x, j, (int)HEATMAP_TYPE.H] *= invDiff[j];
+        fixed (float* dst = heatmapBuff){
+            float* dstPos = dst;
+            for (int y = 0; y < heatmapHeight; ++y){
+                for (int x = 0; x < heatmapWidth; ++x){
+                    for (int j = 0; j < NN_JOINT_COUNT; ++j){
+                        *dstPos -= joint2dMin[j];
+                        *dstPos *= invDiff[j];
+                        dstPos += (int)HEATMAP_TYPE.Length;
+                    }
                 }
             }
         }
@@ -219,34 +227,43 @@ class VNectManager {
             extractedJoints[key] = false;
         }
 
-        for (int y = 0; y < heatmapHeight; ++y) {
-            for (int x = 0; x < heatmapWidth; ++x) {
-                int j = 0;
-                foreach (string key in jointInfos.Keys) {
-                    float v = heatmapBuff[y, x, j++, (int)HEATMAP_TYPE.H];
-                    if (v < jointThreshold) { continue; }
 
-                    float w = x - joint[key].x, h = y - joint[key].y;
-                    float distance = w * w + h * h;
+        fixed (float*src = heatmapBuff){
+            float* srcPos = src;
+            for (int y = 0; y < heatmapHeight; ++y){
+                for (int x = 0; x < heatmapWidth; ++x){
+                    foreach (string key in jointInfos.Keys){
+                        float v = *srcPos;
+                        srcPos += (int)HEATMAP_TYPE.Length;
 
-                    //他のラベルの方が前回のジョイント位置に近い
-                    if (nearestDistance[key] <= distance) { continue; }
+                        if (v < jointThreshold) { continue; }
 
-                    //前回のジョイント位置から遠いため誤検出とみなす
-                    if (distance > distanceLimit) { continue; }
+                        float w = x - joint[key].x, h = y - joint[key].y;
+                        float distance = w * w + h * h;
 
-                    nearestDistance[key] = distance;
-                    joint2D[key] = Vector2.Lerp(joint[key], new Vector2(x, y), joint2DLerp);
-                    extractedJoints[key] = true;
+                        //他のラベルの方が前回のジョイント位置に近い
+                        if (nearestDistance[key] <= distance) { continue; }
+
+                        //前回のジョイント位置から遠いため誤検出とみなす
+                        if (distance > distanceLimit) { continue; }
+
+                        nearestDistance[key] = distance;
+                        joint2D[key] = Vector2.Lerp(joint[key], new Vector2(x, y), joint2DLerp);
+                        extractedJoints[key] = true;
+                    }
                 }
             }
         }
     }
     //ラベル番号beforをafterに変更
-    private void ModifyLabel(int j, int height, int width, int befor, int after) {
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                if (heatmapLabel[j, y, x] == befor) { heatmapLabel[j, y, x] = after; }
+    private unsafe void ModifyLabel(int j, int height, int width, int befor, int after) {
+        fixed (int* dst = heatmapLabel){
+            int* dstPos = dst + j * height * width;
+            for (int y = 0; y < height; ++y){
+                for (int x = 0; x < width; ++x){
+                    if (*dstPos == befor) { *dstPos = after; }
+                    ++dstPos;
+                }
             }
         }
     }
@@ -265,53 +282,66 @@ class VNectManager {
         return max;
     }
     //ラベリング
-    private void Heatmap2Label(float jointThreshold) {
+    private unsafe void Heatmap2Label(float jointThreshold) {
         heatmapLabel = new int[NN_JOINT_COUNT, heatmapHeight, heatmapWidth];
-        Array.Clear(heatmapLabelCount, 0, heatmapLabelCount.Length);
+        //Array.Clear(heatmapLabelCount, 0, heatmapLabelCount.Length);
 
-        for (int j = 0; j < NN_JOINT_COUNT; ++j) {
-            int count = 0;
-            for (int y = 0; y < heatmapHeight; ++y) {
-                for (int x = 0; x < heatmapWidth; ++x) {
-                    //ヒートマップが規定値未満（パーツが検出されていない）なら更新しない
-                    if (heatmapBuff[y, x, j, (int)HEATMAP_TYPE.H] < jointThreshold) { continue; }
-                    //既にラベル番号が振られているなら更新しない
-                    if (heatmapLabel[j, y, x] > 0) { continue; }
+        int[] counts = new int[NN_JOINT_COUNT];
+        fixed (float* src = heatmapBuff){
+            float* srcPos = src;
+            for (int y = 0; y < heatmapHeight; ++y){
+                for (int x = 0; x < heatmapWidth; ++x){
+                    for (int j = 0; j < NN_JOINT_COUNT; ++j){
+                        float v = *srcPos;
+                        srcPos += (int)HEATMAP_TYPE.Length;
 
-                    //近傍ラベルの最大値を取得する
-                    int max = SearchNeighbors(j, heatmapHeight, heatmapWidth, y, x);
-                    //ラベル番号を更新
-                    heatmapLabel[j, y, x] = (max == 0) ? ++count : max;
+                        //ヒートマップが規定値未満（パーツが検出されていない）なら更新しない
+                        if (v < jointThreshold) { continue; }
+                        //既にラベル番号が振られているなら更新しない
+                        if (heatmapLabel[j, y, x] > 0) { continue; }
+
+                        //近傍ラベルの最大値を取得する
+                        int max = SearchNeighbors(j, heatmapHeight, heatmapWidth, y, x);
+                        //ラベル番号を更新
+                        heatmapLabel[j, y, x] = (max == 0) ? ++counts[j] : max;
+                    }
                 }
             }
-            if (count == 0) { continue; }
+        }
 
-            //ラベル番号が重複していたら振り直す
-            for (int y = 0; y < heatmapHeight; ++y) {
-                for (int x = 0; x < heatmapWidth; ++x) {
-                    if (heatmapLabel[j, y, x] == 0) { continue; }
+        fixed (int* src = heatmapLabel){
+            for (int j = 0; j < NN_JOINT_COUNT; ++j){
+                if (counts[j] == 0) { continue; }
 
-                    //近傍の最大値が現在値より高い場合は現在値でラベル番号を上書き
-                    int max = SearchNeighbors(j, heatmapHeight, heatmapWidth, y, x);
-                    int num = heatmapLabel[j, y, x];
-                    if (max > num) { ModifyLabel(j, heatmapHeight, heatmapWidth, max, num); }
+                //ラベル番号が重複していたら振り直す
+                int* srcPos = src + j * heatmapHeight * heatmapWidth;
+                for (int y = 0; y < heatmapHeight; ++y){
+                    for (int x = 0; x < heatmapWidth; ++x){
+                        int num = *(srcPos++);
+                        if (num == 0) { continue; }
+
+                        //近傍の最大値が現在値より高い場合は現在値でラベル番号を上書き
+                        int max = SearchNeighbors(j, heatmapHeight, heatmapWidth, y, x);
+                        if (max > num) { ModifyLabel(j, heatmapHeight, heatmapWidth, max, num); }
+                    }
                 }
-            }
 
-            //振り直しで連番に抜けができたら詰める
-            count = 0;
-            for (int y = 0; y < heatmapHeight; ++y) {
-                for (int x = 0; x < heatmapWidth; ++x) {
-                    int num = heatmapLabel[j, y, x];
-                    if (num > count) { ModifyLabel(j, heatmapHeight, heatmapWidth, num, ++count); }
+                //振り直しで連番に抜けができたら詰める
+                counts[j] = 0;
+                srcPos = src + j * heatmapHeight * heatmapWidth;
+                for (int y = 0; y < heatmapHeight; ++y){
+                    for (int x = 0; x < heatmapWidth; ++x){
+                        int num = *(srcPos++);
+                        if (num > counts[j]) { ModifyLabel(j, heatmapHeight, heatmapWidth, num, ++counts[j]); }
+                    }
                 }
+                heatmapLabelCount[j] = counts[j];
             }
-            heatmapLabelCount[j] = count;
         }
     }
 
     //前フレームのジョイントと重心までの距離が最も近いラベルを今フレームのジョイントにする
-    private void Label2Joint(float distanceLimit) {
+    private unsafe void Label2Joint(float distanceLimit) {
         foreach (string key in jointInfos.Keys) {
             extractedJoints[key] = false;
 
@@ -319,37 +349,42 @@ class VNectManager {
             int j = jointInfos[key].index;
             float nearestDistance = Mathf.Infinity;
 
-            //ラベル番号は1始まり（0の部分はラベリングされていない）
-            for (int num = 1; num <= heatmapLabelCount[j]; ++num) {
-                int area = 0;
-                float gravityX = 0.0f, gravityY = 0.0f;
-                for (int y = 0; y < heatmapHeight; ++y) {
-                    for (int x = 0; x < heatmapWidth; ++x) {
-                        if (num != heatmapLabel[j, y, x]) { continue; }
+            fixed (int* src = heatmapLabel){
+                //ラベル番号は1始まり（0の部分はラベリングされていない）
+                for (int num = 1; num <= heatmapLabelCount[j]; ++num){
+                    int area = 0;
+                    float gravityX = 0.0f, gravityY = 0.0f;
 
-                        ++area;
-                        gravityX += x;
-                        gravityY += y;
+                    int* srcPos = src + j * heatmapHeight * heatmapWidth;
+                    for (int y = 0; y < heatmapHeight; ++y){
+                        for (int x = 0; x < heatmapWidth; ++x){
+                            int v = *(srcPos++);
+                            if (num != v) { continue; }
+
+                            ++area;
+                            gravityX += x;
+                            gravityY += y;
+                        }
                     }
+                    if (area == 0) { continue; }
+
+                    //ラベルの重心を出す
+                    gravityX /= area;
+                    gravityY /= area;
+
+                    float w = gravityX - jointX, h = gravityY - jointY;
+                    float distance = w * w + h * h;
+
+                    //他のラベルの方が前回のジョイント位置に近い
+                    if (nearestDistance <= distance) { continue; }
+
+                    //前回のジョイント位置から遠いため誤検出とみなす
+                    if (distance > distanceLimit) { continue; }
+
+                    nearestDistance = distance;
+                    joint2D[key] = new Vector2(gravityX, gravityY);
+                    extractedJoints[key] = true;
                 }
-                if (area == 0) { continue; }
-
-                //ラベルの重心を出す
-                gravityX /= area;
-                gravityY /= area;
-
-                float w = gravityX - jointX, h = gravityY - jointY;
-                float distance = w * w + h * h;
-
-                //他のラベルの方が前回のジョイント位置に近い
-                if (nearestDistance <= distance) { continue; }
-
-                //前回のジョイント位置から遠いため誤検出とみなす
-                if (distance > distanceLimit) { continue; }
-
-                nearestDistance = distance;
-                joint2D[key] = new Vector2(gravityX, gravityY);
-                extractedJoints[key] = true;
             }
         }
     }

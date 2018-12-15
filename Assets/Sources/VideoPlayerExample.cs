@@ -198,8 +198,8 @@ public class VideoPlayerExample :MonoBehaviour {
         }
         //ラベリング用バッファの確認用
         else if(DrawHeatmapLabel){
-            //debugRenderer.DebugDrawHeatmapLabel(vnect.heatmapLabel, vnect.heatmapLabelCount, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
-            debugRenderer.DebugDrawHeatmapLabel2(vnect.heatmapLabel, vnect.heatmapLabelCount, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
+            debugRenderer.DebugDrawHeatmapLabel(vnect.heatmapLabel, vnect.heatmapLabelCount, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
+            //debugRenderer.DebugDrawHeatmapLabel2(vnect.heatmapLabel, vnect.heatmapLabelCount, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
         }
         //2Dジョイントの確認用
         if(DrawResults2D){

@@ -26,6 +26,7 @@ public class FPSCounter : MonoBehaviour
 
     private void OnGUI()
     {
+        GUI.skin.label.fontSize = 30;
         GUILayout.Label( "FPS: " + m_fps.ToString( "f2" ) );
     }
 }
