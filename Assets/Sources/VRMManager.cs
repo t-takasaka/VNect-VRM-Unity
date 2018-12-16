@@ -177,7 +177,9 @@ class VRMManager {
                 Quaternion rot = Quaternion.FromToRotation(bindDirs[key], own2childDirs[key]);
 
                 //両脚の角度から腰の、両腕の角度から胸のY軸回転角度を出して掛ける
-                if(key == "Hips" || key == "Spine"){ rot *= hipsRotateY; }
+                if(key == "Hips" || key == "Spine" || key == "LeftLeg" || key == "RightLeg" || 
+                    key == "LeftKnee" || key == "RightKnee" ){ rot *= hipsRotateY; }
+
                 if(key == "Neck" || key == "Head"){ rot *= chestRotateY; }
                 joints[key].rotation = rot;
 
