@@ -24,6 +24,11 @@ public class VideoPlayerExample :MonoBehaviour {
     public float Joint2DLerp = 0.5f;
     public float Joint3DLerp = 0.5f;
 
+    //入力映像の色調整
+    public float AdjInputR = 0.5f;
+    public float AdjInputG = 0.5f;
+    public float AdjInputB = 0.5f;
+
     //サイズを変更した入力画像を複数枚用意する。検出後に平均して推定誤差を減らすため
     public bool UseMultiScale = true;
 
@@ -148,8 +153,9 @@ public class VideoPlayerExample :MonoBehaviour {
         if (UseBoundingBox && initialized) { vnect.UpdateBoundingBox(ref boundingBox, videoWidth, videoHeight); }
         initialized = true;
 
+        Color adjColor = new Color(AdjInputR, AdjInputG, AdjInputB);
         Texture2D resizedTexture = ResizeTexture(texture);
-        vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, Joint2DLerp, Joint3DLerp, UseLabeling);
+        vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, Joint2DLerp, Joint3DLerp, adjColor, UseLabeling);
         Destroy(resizedTexture);
 
         isPosing = false;

@@ -399,6 +399,9 @@ MonoBehaviour:
   JointThreshold: 0.5
   Joint2DLerp: 0.5
   Joint3DLerp: 0.2
+  AdjInputR: 0.7
+  AdjInputG: 0.7
+  AdjInputB: 0.7
   UseMultiScale: 1
   UseLabeling: 0
   UseBoundingBox: 0
@@ -448,7 +451,7 @@ VideoPlayer:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1571320480}
   m_Enabled: 1
-  m_VideoClip: {fileID: 32900000, guid: 81d4a431c40e51e4ba44b2da5af6503e, type: 3}
+  m_VideoClip: {fileID: 32900000, guid: a9764e53869e86c4aa9bd8751904c77f, type: 3}
   m_TargetCameraAlpha: 1
   m_TargetCamera3DLayout: 0
   m_TargetCamera: {fileID: 0}
@@ -457,7 +460,7 @@ VideoPlayer:
   m_TargetMaterialRenderer: {fileID: 0}
   m_TargetMaterialProperty: _MainTex
   m_RenderMode: 2
-  m_AspectRatio: 2
+  m_AspectRatio: 1
   m_DataSource: 0
   m_PlaybackSpeed: 1
   m_AudioOutputMode: 0

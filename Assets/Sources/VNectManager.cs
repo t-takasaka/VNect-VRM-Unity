@@ -58,9 +58,11 @@ class VNectManager {
         shape = new TFShape(nnShapeScales.Length, NN_INPUT_WIDTH_MAX, NN_INPUT_HEIGHT_MAX, PIXEL_SIZE);
     }
 
-    public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, float joint2DLerp, float joint3DLerp, bool useLabeling) {
+    public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, 
+                        float joint2DLerp, float joint3DLerp, Color adjColor, bool useLabeling) {
+
         Color32[] pixels = resizedTexture.GetPixels32();
-        TFTensor inputTensor = CreateShapes(pixels);
+        TFTensor inputTensor = CreateShapes(pixels, adjColor);
 
         TFSession.Runner runner = session.GetRunner();
         runner.AddInput(graph["Placeholder"][0], inputTensor);
@@ -84,9 +86,8 @@ class VNectManager {
         Extract3DJoint(joint3DLerp);
     }
 
-    private TFTensor CreateShapes(Color32[] pixels) {
+    private TFTensor CreateShapes(Color32[] pixels, Color adjColor) {
         const float ItoF = 1.0f / 255.0f;
-        const float MEAN = 0.4f;
 
         //縮小率の逆数、シェイプの幅と高さの初期化
         float[] invShapeScales = new float[nnShapeScales.Length];
@@ -124,14 +125,14 @@ class VNectManager {
 
                     int dstPos = (padScale + flipHeight + padWidth + x) * PIXEL_SIZE;
                     if (RGB2BGR) {
-                        nnInputBuff[dstPos + 0] = src.b * ItoF - MEAN;
-                        nnInputBuff[dstPos + 1] = src.g * ItoF - MEAN;
-                        nnInputBuff[dstPos + 2] = src.r * ItoF - MEAN;
+                        nnInputBuff[dstPos + 0] = src.b * ItoF - adjColor.b;
+                        nnInputBuff[dstPos + 1] = src.g * ItoF - adjColor.g;
+                        nnInputBuff[dstPos + 2] = src.r * ItoF - adjColor.r;
 
                     } else {
-                        nnInputBuff[dstPos + 0] = src.r * ItoF - MEAN;
-                        nnInputBuff[dstPos + 1] = src.g * ItoF - MEAN;
-                        nnInputBuff[dstPos + 2] = src.b * ItoF - MEAN;
+                        nnInputBuff[dstPos + 0] = src.r * ItoF - adjColor.r;
+                        nnInputBuff[dstPos + 1] = src.g * ItoF - adjColor.g;
+                        nnInputBuff[dstPos + 2] = src.b * ItoF - adjColor.b;
                     }
                 }
             }
@@ -141,23 +142,43 @@ class VNectManager {
         TFTensor tensor = TFTensor.FromBuffer(shape, nnInputBuff, 0, nnInputBuff.Length);
         return tensor;
     }
-
-    //現状使わない
-    private void NormalizeRGB(Color32[] pixels){
+    
+    private unsafe float GetColorInfo(Color32[] pixels){
         int rMax = 0, gMax = 0, bMax = 0;
         int rMin = 255, gMin = 255, bMin = 255;
-        for(int y = 0; y < NN_INPUT_HEIGHT_MAX; ++y) {
-            for(int x = 0; x < NN_INPUT_WIDTH_MAX; ++x) {
-                Color32 src = pixels[y  * NN_INPUT_WIDTH_MAX + x];
-                rMax = Math.Max(rMax, src.r);
-                gMax = Math.Max(gMax, src.g);
-                bMax = Math.Max(bMax, src.b);
-                rMin = Math.Min(rMin, src.r);
-                gMin = Math.Min(gMin, src.g);
-                bMin = Math.Min(bMin, src.b);
+
+        fixed (Color32* src = pixels) {
+            Color32* srcPos = src;
+            for(int y = 0; y < NN_INPUT_HEIGHT_MAX; ++y) {
+                for(int x = 0; x < NN_INPUT_WIDTH_MAX; ++x) {
+                    rMax = Math.Max(rMax, srcPos->r);
+                    gMax = Math.Max(gMax, srcPos->g);
+                    bMax = Math.Max(bMax, srcPos->b);
+                    rMin = Math.Min(rMin, srcPos->r);
+                    gMin = Math.Min(gMin, srcPos->g);
+                    bMin = Math.Min(bMin, srcPos->b);
+                    ++srcPos;
+                }
             }
         }
-        float rNorm = 1.0f / rMax, gNorm = 1.0f / gMax, bNorm = 1.0f / bMax;
+
+        int max = Math.Max(rMax, Math.Max(gMax, bMax));
+        int min = Math.Min(rMin, Math.Min(gMin, bMin));
+        float saturation = (max - min) / (float)max;
+        float brightness = max / 255.0f;;
+        float luminance = (max + min) / 2.0f / 255.0f;
+
+        float rBright = rMax / 255.0f;;
+        float gBright = gMax / 255.0f;;
+        float bBright = bMax / 255.0f;;
+        float rLum = (rMax + rMin) / 2.0f / 255.0f;
+        float gLum = (gMax + gMin) / 2.0f / 255.0f;
+        float bLum = (bMax + bMin) / 2.0f / 255.0f;
+        
+        //Debug.Log(rBright + " " + gBright + " " + bBright);
+        Debug.Log(rLum + " " + gLum + " " + bLum);
+
+        return luminance;
     }
 
     //NNからの出力をバッファに取り出す
