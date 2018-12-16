@@ -30,14 +30,22 @@ class VNectManager {
 
     public Dictionary<string, Vector2> joint2D = new Dictionary<string, Vector2>();
     public Dictionary<string, Vector3> joint3D = new Dictionary<string, Vector3>();
+    private int joint2DLerpFramesCount = 2;
+    private int joint3DLerpFramesCount = 10;
+    private int joint2DLerpFrameNum = 0;
+    private int joint3DLerpFrameNum = 0;
+    private Dictionary<string, Vector2[]> joint2DLerpFrames;
+    private Dictionary<string, Vector3[]> joint3DLerpFrames;
     public Dictionary<string, bool> extractedJoints = new Dictionary<string, bool>();
 
     private TFGraph graph;
     private TFSession session;
     private TFShape shape;
 
-    public void Init(Dictionary<string, JointInfo> jointInfos, bool useMultiScale) {
+    public void Init(Dictionary<string, JointInfo> jointInfos, int joint2DLerpFramesCount, int joint3DLerpFramesCount, bool useMultiScale) {
         this.jointInfos = jointInfos;
+        this.joint2DLerpFramesCount = joint2DLerpFramesCount; 
+        this.joint3DLerpFramesCount = joint3DLerpFramesCount; 
 
         nnShapeScales = useMultiScale ? new float[]{ 1.0f, 0.7f } : new float[] { 1.0f };
         nnInputBuff = new float[NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * PIXEL_SIZE * nnShapeScales.Length];
@@ -58,8 +66,7 @@ class VNectManager {
         shape = new TFShape(nnShapeScales.Length, NN_INPUT_WIDTH_MAX, NN_INPUT_HEIGHT_MAX, PIXEL_SIZE);
     }
 
-    public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, 
-                        float joint2DLerp, float joint3DLerp, Color adjColor, bool useLabeling) {
+    public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, Color adjColor, bool useLabeling) {
 
         Color32[] pixels = resizedTexture.GetPixels32();
         TFTensor inputTensor = CreateShapes(pixels, adjColor);
@@ -82,8 +89,8 @@ class VNectManager {
             Array.Clear(heatmapBuff, 0, heatmapBuff.Length);
         }
         ExtractHeatmaps(nnOutputPtr, nnOutputPtrX, nnOutputPtrY, nnOutputPtrZ);
-        Extract2DJoint(jointDistanceLimit, jointThreshold, joint2DLerp, useLabeling);
-        Extract3DJoint(joint3DLerp);
+        Extract2DJoint(jointDistanceLimit, jointThreshold, useLabeling);
+        Extract3DJoint();
     }
 
     private TFTensor CreateShapes(Color32[] pixels, Color adjColor) {
@@ -267,7 +274,7 @@ class VNectManager {
 
     private Dictionary<string, Vector2> preFrameJoint2D = new Dictionary<string, Vector2>();
     private Dictionary<string, float> nearestDistance = new Dictionary<string, float>();
-    private unsafe void Heatmap2Joint(float distanceLimit, float jointThreshold, float joint2DLerp) {
+    private unsafe void Heatmap2Joint(float distanceLimit, float jointThreshold) {
         preFrameJoint2D.Clear();
         nearestDistance.Clear();
         foreach (string key in jointInfos.Keys) {
@@ -276,7 +283,6 @@ class VNectManager {
             extractedJoints[key] = false;
         }
 
-        Vector2 tmp = new Vector2();
         fixed (float*src = heatmapBuff){
             float* srcPos = src;
             for (int y = 0; y < heatmapHeight; ++y){
@@ -298,8 +304,7 @@ class VNectManager {
                         if (distance > distanceLimit) { continue; }
 
                         nearestDistance[key] = distance;
-                        tmp.Set(x, y);
-                        joint2D[key] = Vector2.Lerp(preFrameJoint2D[key], tmp, joint2DLerp);
+                        joint2D[key] = new Vector2(x, y);
                         extractedJoints[key] = true;
                     }
                 }
@@ -464,7 +469,7 @@ class VNectManager {
     }
 
     //2Dジョイントのヒートマップ上の位置を取得
-    private void Extract2DJoint(float jointDistanceLimit, float jointThreshold, float joint2DLerp, bool useLabeling) {
+    private void Extract2DJoint(float jointDistanceLimit, float jointThreshold, bool useLabeling) {
         float widthLimit = heatmapWidth * jointDistanceLimit;
         float heightLimit = heatmapHeight * jointDistanceLimit;
         float distanceLimit = widthLimit * widthLimit + heightLimit * heightLimit;
@@ -480,13 +485,44 @@ class VNectManager {
 
         } else {
             //規定値以上で最も前フレームのジョイントに近い位置を選択
-            Heatmap2Joint(distanceLimit, jointThreshold, joint2DLerp);
+            Heatmap2Joint(distanceLimit, jointThreshold);
         }
         CenteringNonExtracted2DJoint();
+        Lerp2DJoint();
+    }
+    private void Lerp2DJoint(){
+        //補完用のフレームが未初期化なら初期化
+        if (joint2DLerpFrames == null) {
+            joint2DLerpFrames = new Dictionary<string, Vector2[]>();
+            foreach (string key in jointInfos.Keys) {
+                joint2DLerpFrames[key] = new Vector2[joint2DLerpFramesCount];
+                float x = joint2D[key].x, y = joint2D[key].y;
+                for(int i = 0; i < joint2DLerpFramesCount; ++i) {
+                    joint2DLerpFrames[key][i] = new Vector2(x, y);
+                }
+            }
+        }
+
+        //補完用のフレームに現在フレームのジョイントの情報を登録
+        foreach (string key in jointInfos.Keys) {
+            float x = joint2D[key].x, y = joint2D[key].y;
+            joint2DLerpFrames[key][joint2DLerpFrameNum] = new Vector2(x, y);
+            joint2D[key] = Vector2.zero;
+        } 
+        joint2DLerpFrameNum = (joint2DLerpFrameNum + 1) % joint2DLerpFramesCount;
+
+        //補完用のフレームから平均値を出す
+        foreach (string key in jointInfos.Keys) {
+            for(int i = 0; i < joint2DLerpFramesCount; ++i) {
+                joint2D[key] += joint2DLerpFrames[key][i];
+            }
+            joint2D[key] /= joint2DLerpFramesCount;
+       }
     }
 
-    //3Dジョイントの三次元空間上の位置を取得
-    private void Extract3DJoint(float joint3DLerp) {
+    //3Dジョイントの三次元空間上の位置を計算
+    private void Extract3DJoint() {
+        //2Dジョイントの位置から3Dジョイントの位置を取得
         float invScaleLen = 1.0f / nnShapeScales.Length;
         foreach (string key in jointInfos.Keys) {
             if (extractedJoints[key] == false) { continue;  }
@@ -497,8 +533,39 @@ class VNectManager {
             float x = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.X] * invScaleLen;
             float y = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.Y] * invScaleLen;
             float z = heatmapBuff[_y, _x, _j, (int)HEATMAP_TYPE.Z] * invScaleLen;
-            joint3D[key] = Vector3.Lerp(joint3D[key], new Vector3(-x, -y, -z), joint3DLerp);
+            joint3D[key] = new Vector3(-x, -y, -z);
         }
+
+        Lerp3DJoint();
+    }
+    private void Lerp3DJoint(){
+        //補完用のフレームが未初期化なら初期化
+        if (joint3DLerpFrames == null) {
+            joint3DLerpFrames = new Dictionary<string, Vector3[]>();
+            foreach (string key in jointInfos.Keys) {
+                joint3DLerpFrames[key] = new Vector3[joint3DLerpFramesCount];
+                float x = joint3D[key].x, y = joint3D[key].y, z = joint3D[key].z;
+                for(int i = 0; i < joint3DLerpFramesCount; ++i) {
+                    joint3DLerpFrames[key][i] = new Vector3(x, y, z);
+                }
+            }
+        }
+
+        //補完用のフレームに現在フレームのジョイントの情報を登録
+        foreach (string key in jointInfos.Keys) {
+            float x = joint3D[key].x, y = joint3D[key].y, z = joint3D[key].z;
+            joint3DLerpFrames[key][joint3DLerpFrameNum] = new Vector3(x, y, z);
+            joint3D[key] = Vector3.zero;
+        } 
+        joint3DLerpFrameNum = (joint3DLerpFrameNum + 1) % joint3DLerpFramesCount;
+
+        //補完用のフレームから平均値を出す
+        foreach (string key in jointInfos.Keys) {
+            for(int i = 0; i < joint3DLerpFramesCount; ++i) {
+                joint3D[key] += joint3DLerpFrames[key][i];
+            }
+            joint3D[key] /= joint3DLerpFramesCount;
+       }
     }
 
     //推定した姿勢を元にバウンディングボックスを更新する

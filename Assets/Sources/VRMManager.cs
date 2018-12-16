@@ -8,7 +8,9 @@ class VRMManager {
     private Animator animator;
     private float modelPositionX;
     private float modelPositionY;
+    private float lookForwardAngle;
     private float positionScale = 10;
+
 
     private Dictionary<string, Vector3> bindDirs = new Dictionary<string, Vector3>();
     private Dictionary<string, Vector3> parent2ownDirs = new Dictionary<string, Vector3>();
@@ -25,9 +27,10 @@ class VRMManager {
     private const bool ShowGizmo = false;
 
     public Dictionary<string, Vector3> Init(Dictionary<string, JointInfo> jointInfos, 
-                                            float modelPositionX, float modelPositionY) {
+                                            float modelPositionX, float modelPositionY, float lookForwardAngle) {
         this.modelPositionX = modelPositionX;
         this.modelPositionY = modelPositionY;
+        this.lookForwardAngle = lookForwardAngle;
 
         GameObject model = GameObject.Find("VRoid");
         animator = model.GetComponent<Animator>();
@@ -180,14 +183,25 @@ class VRMManager {
                 if(key == "Hips" || key == "Spine" || key == "LeftLeg" || key == "RightLeg" || 
                     key == "LeftKnee" || key == "RightKnee" ){ rot *= hipsRotateY; }
 
-                if(key == "Neck" || key == "Head"){ rot *= chestRotateY; }
+                if(key == "Neck"){ 
+                    rot *= chestRotateY; 
+
+                    if (lookForwardAngle > 0) {
+                        float angle = Quaternion.Angle(rot, Quaternion.Euler(Vector3.forward));
+                        if(angle < lookForwardAngle){
+                            HumanBodyBones humanBodyBones = jointInfos["Head"].human;
+                            var head = animator.GetBoneTransform(humanBodyBones).transform;
+                            head.rotation = Quaternion.Euler(Vector3.forward); 
+                        }
+                    }
+                }
                 joints[key].rotation = rot;
 
                 //モデルの位置調整
                 if(key == "Hips") {
                     float x = joint2D[key].x / nnInputWidth * -positionScale;
                     float y = joint2D[key].y / nnInputHeight * -positionScale;
-                    joints[key].localPosition = new Vector3(0 + modelPositionX, y + modelPositionY, 0);
+                    joints[key].localPosition = new Vector3(x + modelPositionX, y + modelPositionY, 0);
                 }
 
 

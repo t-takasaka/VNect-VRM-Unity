@@ -154,15 +154,15 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 4927806553749458, guid: 39b57c70650554a4ebe488ed1807f109, type: 2}
       propertyPath: m_LocalScale.x
-      value: 4
+      value: 4.5
       objectReference: {fileID: 0}
     - target: {fileID: 4927806553749458, guid: 39b57c70650554a4ebe488ed1807f109, type: 2}
       propertyPath: m_LocalScale.y
-      value: 4
+      value: 4.5
       objectReference: {fileID: 0}
     - target: {fileID: 4927806553749458, guid: 39b57c70650554a4ebe488ed1807f109, type: 2}
       propertyPath: m_LocalScale.z
-      value: 4
+      value: 4.5
       objectReference: {fileID: 0}
     - target: {fileID: 114727723079268488, guid: 39b57c70650554a4ebe488ed1807f109,
         type: 2}
@@ -394,18 +394,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   UseWebcam: 0
   ModelPositionX: 0
-  ModelPositionY: 1.8
+  ModelPositionY: 1.5
   JointDistanceLimit: 0.3
   JointThreshold: 0.5
-  Joint2DLerp: 0.5
-  Joint3DLerp: 0.2
-  AdjInputR: 0.6
-  AdjInputG: 0.6
-  AdjInputB: 0.6
+  Joint2DLerpFramesCount: 1
+  Joint3DLerpFramesCount: 10
+  AdjInputR: 0.8
+  AdjInputG: 0.8
+  AdjInputB: 0.8
   UseMultiScale: 1
   UseLabeling: 0
   UseBoundingBox: 0
-  EnableHead: 0
+  EnableHead: 1
   EnableNeck: 1
   EnableArms: 1
   EnableElbows: 1
@@ -419,7 +419,7 @@ MonoBehaviour:
   DebugDrawHeatmapBuff: 0
   DrawHeatmapLabel: 0
   DrawResults2D: 1
-  DrawResults3D: 1
+  DrawResults3D: 0
 --- !u!222 &1571320482
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -12,6 +12,7 @@ public class VideoPlayerExample :MonoBehaviour {
 
     public float ModelPositionX = 0.0f;
     public float ModelPositionY = 1.8f;
+    public float LookForwardAngle = 30;
 
     //前フレームのジョイント位置に対して今フレームのジョイント位置候補が、
     //画面サイズの何割離れていたら誤検出とみなすかの距離
@@ -20,9 +21,9 @@ public class VideoPlayerExample :MonoBehaviour {
     //NNの出力をジョイントとみなす閾値
     public float JointThreshold = 0.3f;
 
-    //前フレームに対してのスムージング
-    public float Joint2DLerp = 0.5f;
-    public float Joint3DLerp = 0.5f;
+    //ジョイントの平均値を取るための前フレーム数
+    public int Joint2DLerpFramesCount = 2;
+    public int Joint3DLerpFramesCount = 10;
 
     //入力映像の色調整
     public float AdjInputR = 0.5f;
@@ -116,13 +117,13 @@ public class VideoPlayerExample :MonoBehaviour {
         JointInfo.Init(jointInfos);
 
         //VNectのモデルを読み込み
-        vnect.Init(jointInfos, UseMultiScale);
+        vnect.Init(jointInfos, Joint2DLerpFramesCount, Joint3DLerpFramesCount, UseMultiScale);
 
         //推定結果の描画用プレーン
         debugRenderer = GameObject.Find("DebugRenderer").GetComponent<DebugRenderer>();
 
         //VRoidのモデルを読み込み
-        vrm.Init(jointInfos, ModelPositionX, ModelPositionY);
+        vrm.Init(jointInfos, ModelPositionX, ModelPositionY, LookForwardAngle);
     }
 
     void Update() {
@@ -155,7 +156,7 @@ public class VideoPlayerExample :MonoBehaviour {
 
         Color adjColor = new Color(AdjInputR, AdjInputG, AdjInputB);
         Texture2D resizedTexture = ResizeTexture(texture);
-        vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, Joint2DLerp, Joint3DLerp, adjColor, UseLabeling);
+        vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, adjColor, UseLabeling);
         Destroy(resizedTexture);
 
         isPosing = false;
