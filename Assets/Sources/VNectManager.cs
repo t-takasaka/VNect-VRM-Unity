@@ -294,8 +294,9 @@ class VNectManager {
         if (heatmapLabel == null){
             heatmapLabel = new int[NN_JOINT_COUNT, heatmapHeight, heatmapWidth];
         }else{
-            Array.Clear(heatmapLabelCount, 0, heatmapLabelCount.Length);
+            Array.Clear(heatmapLabel, 0, heatmapLabel.Length);
         }
+        Array.Clear(heatmapLabelCount, 0, heatmapLabelCount.Length);
 
         int[] counts = new int[NN_JOINT_COUNT];
         fixed (float* src = heatmapBuff){
@@ -445,6 +446,8 @@ class VNectManager {
     private void Extract3DJoint(float joint3DLerp) {
         float invScaleLen = 1.0f / nnShapeScales.Length;
         foreach (string key in jointInfos.Keys) {
+            if (extractedJoints[key] == false) { continue;  }
+
             int _x = (int)joint2D[key].x;
             int _y = (int)joint2D[key].y;
             int _j = jointInfos[key].index;

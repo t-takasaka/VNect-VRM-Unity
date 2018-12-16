@@ -171,6 +171,7 @@ class VRMManager {
 
                 continue;
             }
+            if (extractedJoints[key] == false) { continue;  }
 
             if(UseWorldRotate){
                 Quaternion rot = Quaternion.FromToRotation(bindDirs[key], own2childDirs[key]);
