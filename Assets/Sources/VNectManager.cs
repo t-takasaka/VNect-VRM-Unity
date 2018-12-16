@@ -100,23 +100,27 @@ class VNectManager {
 
         Array.Clear(nnInputBuff, 0, nnInputBuff.Length);
         for (int scaleNum = 0; scaleNum < nnShapeScales.Length; ++scaleNum) {
+            int height = shapeHeight[scaleNum];
+            int width = shapeWidth[scaleNum];
+            float invShapeScale = invShapeScales[scaleNum];
+
             //縮小した分だけパディングする
-            int padHeight = (NN_INPUT_HEIGHT_MAX - shapeHeight[scaleNum]) / 2;
-            int padWidth = (NN_INPUT_WIDTH_MAX - shapeWidth[scaleNum]) / 2;
+            int padHeight = (NN_INPUT_HEIGHT_MAX - height) / 2;
+            int padWidth = (NN_INPUT_WIDTH_MAX - width) / 2;
 
             //scalesの分だけdstの書き込み先をずらす
             int padScale = NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * scaleNum;
 
-            for (int y = 0; y < shapeHeight[scaleNum]; ++y) {
+            for (int y = 0; y < height; ++y) {
                 //縮小後のdstが基準なのでinvScale倍した位置のsrcから色情報を取得する
-                int srcHeight = (int)(y * invShapeScales[scaleNum]);
+                int srcHeight = (int)(y * invShapeScale) * NN_INPUT_WIDTH_MAX;
 
-                for (int x = 0; x < shapeWidth[scaleNum]; ++x) {
-                    int srcWidth = (int)(x * invShapeScales[scaleNum]);
-                    Color32 src = pixels[srcHeight * NN_INPUT_WIDTH_MAX + srcWidth];
+                //画像の上下を反転
+                int flipHeight = ((NN_INPUT_HEIGHT_MAX - 1) - (padHeight + y)) * NN_INPUT_WIDTH_MAX;
 
-                    //画像の上下を反転
-                    int flipHeight = ((NN_INPUT_HEIGHT_MAX - 1) - (padHeight + y)) * NN_INPUT_WIDTH_MAX;
+                for (int x = 0; x < width; ++x) {
+                    int srcWidth = (int)(x * invShapeScale);
+                    Color32 src = pixels[srcHeight + srcWidth];
 
                     int dstPos = (padScale + flipHeight + padWidth + x) * PIXEL_SIZE;
                     if (RGB2BGR) {
@@ -136,6 +140,24 @@ class VNectManager {
         //バッファからTFTensorを作って返す
         TFTensor tensor = TFTensor.FromBuffer(shape, nnInputBuff, 0, nnInputBuff.Length);
         return tensor;
+    }
+
+    //現状使わない
+    private void NormalizeRGB(Color32[] pixels){
+        int rMax = 0, gMax = 0, bMax = 0;
+        int rMin = 255, gMin = 255, bMin = 255;
+        for(int y = 0; y < NN_INPUT_HEIGHT_MAX; ++y) {
+            for(int x = 0; x < NN_INPUT_WIDTH_MAX; ++x) {
+                Color32 src = pixels[y  * NN_INPUT_WIDTH_MAX + x];
+                rMax = Math.Max(rMax, src.r);
+                gMax = Math.Max(gMax, src.g);
+                bMax = Math.Max(bMax, src.b);
+                rMin = Math.Min(rMin, src.r);
+                gMin = Math.Min(gMin, src.g);
+                bMin = Math.Min(bMin, src.b);
+            }
+        }
+        float rNorm = 1.0f / rMax, gNorm = 1.0f / gMax, bNorm = 1.0f / bMax;
     }
 
     //NNからの出力をバッファに取り出す
@@ -512,11 +534,13 @@ class VNectManager {
         right = centerX + half;
         top = centerY - half;
         bottom = centerY + half;
+        
+        //TODO:lerp
 
         //※バウンディングボックスは正方形
         //※上下左右の端が入力映像サイズを超えているケースがあり得る
         boundingBox.Set(left, top, right - left, bottom - top);
-       
+
     }
 
 };
