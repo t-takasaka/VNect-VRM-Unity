@@ -150,6 +150,7 @@ public class VideoPlayerExample :MonoBehaviour {
 
         Texture2D resizedTexture = ResizeTexture(texture);
         vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, Joint2DLerp, Joint3DLerp, UseLabeling);
+        Destroy(resizedTexture);
 
         isPosing = false;
 
@@ -251,6 +252,7 @@ public class VideoPlayerExample :MonoBehaviour {
         Texture2D dst = new Texture2D((int)dstRect.width, (int)dstRect.height, TextureFormat.ARGB32, true);
         dst.ReadPixels(dstRect, 0, 0, true);
         Graphics.SetRenderTarget(null);
+        Destroy(rt);
 
         return dst;
     }
