@@ -247,7 +247,7 @@ public class DebugRenderer :MonoBehaviour {
 
     public void DrawResults2D(Dictionary<string, Vector2> joint2D, Dictionary<string, JointInfo> jointInfos) {
         DrawSkeleton(joint2D, jointInfos);
-        DrawKeypoint(joint2D, jointInfos);
+        //DrawKeypoint(joint2D, jointInfos);
     }
     private void DrawKeypoint(Dictionary<string, Vector2> joint2d, Dictionary<string, JointInfo> jointInfos) {
         float radius = 0.08f;
@@ -270,14 +270,22 @@ public class DebugRenderer :MonoBehaviour {
         DrawEnd();
     }
     private void DrawSkeleton(Dictionary<string, Vector2> joint2d, Dictionary<string, JointInfo> jointInfos) {
+        const bool drawEyes = false;
+        const bool drawHand = false;
+        const bool drawToeBase = false;
+
         DrawBegin();
         GL.Begin(GL.QUADS);
         foreach (string key in jointInfos.Keys) {
-            string child = jointInfos[key].child;
-            if (!joint2d.ContainsKey(child)) { continue; }
+            if(!drawEyes && key == "Eyes"){ continue; }
+            if(!drawHand && (key == "LeftHand" || key == "RightHand")){ continue; }
+            if(!drawToeBase && (key == "LeftToeBase" || key == "RightToeBase")){ continue; }
+
+            string target = jointInfos[key].parent;
+            if (!joint2d.ContainsKey(target)) { continue; }
 
             Vector2 v0 = joint2d[key];
-            Vector2 v1 = joint2d[child];
+            Vector2 v1 = joint2d[target];
             GL.Color(jointInfos[key].color);
             DrawLine2D(new Vector3(v0.x * displayScale * 8, v0.y * displayScale * 8),
                         new Vector3(v1.x * displayScale * 8, v1.y * displayScale * 8), 0.02f);

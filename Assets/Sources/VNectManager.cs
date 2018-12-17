@@ -66,10 +66,10 @@ class VNectManager {
         shape = new TFShape(nnShapeScales.Length, NN_INPUT_WIDTH_MAX, NN_INPUT_HEIGHT_MAX, PIXEL_SIZE);
     }
 
-    public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, Color adjColor, bool useLabeling) {
+    public void Update(Texture2D resizedTexture, float jointDistanceLimit, float jointThreshold, Color colorThreshold, bool useLabeling) {
 
         Color32[] pixels = resizedTexture.GetPixels32();
-        TFTensor inputTensor = CreateShapes(pixels, adjColor);
+        TFTensor inputTensor = CreateShapes(pixels, colorThreshold);
 
         TFSession.Runner runner = session.GetRunner();
         runner.AddInput(graph["Placeholder"][0], inputTensor);
@@ -93,7 +93,7 @@ class VNectManager {
         Extract3DJoint();
     }
 
-    private TFTensor CreateShapes(Color32[] pixels, Color adjColor) {
+    private TFTensor CreateShapes(Color32[] pixels, Color colorThreshold) {
         const float ItoF = 1.0f / 255.0f;
 
         //縮小率の逆数、シェイプの幅と高さの初期化
@@ -105,6 +105,18 @@ class VNectManager {
             shapeWidth[i] = (int)(NN_INPUT_WIDTH_MAX * nnShapeScales[i]);
             shapeHeight[i] = (int)(NN_INPUT_HEIGHT_MAX * nnShapeScales[i]);
         }
+
+        //Color[] info = GetColorInfo(pixels);
+        //float minR = info[0].r, minG = info[0].g, minB = info[0].b;
+        //float maxR = info[1].r, maxG = info[1].g, maxB = info[1].b;
+        //float invMaxR = 1 / maxR, invMaxG = 1 / maxG, invMaxB = 1 / maxB;
+        //float avgR = (info[2].r - minR) * invMaxR * 1.0f;
+        //float avgG = (info[2].g - minG) * invMaxG * 1.0f;
+        //float avgB = (info[2].b - minB) * invMaxB * 1.0f;
+
+        float thresholdR = colorThreshold.r;
+        float thresholdG = colorThreshold.g;
+        float thresholdB = colorThreshold.b;
 
         Array.Clear(nnInputBuff, 0, nnInputBuff.Length);
         for (int scaleNum = 0; scaleNum < nnShapeScales.Length; ++scaleNum) {
@@ -132,14 +144,14 @@ class VNectManager {
 
                     int dstPos = (padScale + flipHeight + padWidth + x) * PIXEL_SIZE;
                     if (RGB2BGR) {
-                        nnInputBuff[dstPos + 0] = src.b * ItoF - adjColor.b;
-                        nnInputBuff[dstPos + 1] = src.g * ItoF - adjColor.g;
-                        nnInputBuff[dstPos + 2] = src.r * ItoF - adjColor.r;
+                        nnInputBuff[dstPos + 0] = src.b * ItoF - thresholdB;
+                        nnInputBuff[dstPos + 1] = src.g * ItoF - thresholdG;
+                        nnInputBuff[dstPos + 2] = src.r * ItoF - thresholdR;
 
                     } else {
-                        nnInputBuff[dstPos + 0] = src.r * ItoF - adjColor.r;
-                        nnInputBuff[dstPos + 1] = src.g * ItoF - adjColor.g;
-                        nnInputBuff[dstPos + 2] = src.b * ItoF - adjColor.b;
+                        nnInputBuff[dstPos + 0] = src.r * ItoF - thresholdR;
+                        nnInputBuff[dstPos + 1] = src.g * ItoF - thresholdG;
+                        nnInputBuff[dstPos + 2] = src.b * ItoF - thresholdB;
                     }
                 }
             }
@@ -150,42 +162,43 @@ class VNectManager {
         return tensor;
     }
     
-    private unsafe float GetColorInfo(Color32[] pixels){
-        int rMax = 0, gMax = 0, bMax = 0;
-        int rMin = 255, gMin = 255, bMin = 255;
+    private unsafe Color[] GetColorInfo(Color32[] pixels){
+        int minR = 255, minG = 255, minB = 255;
+        int maxR = 0, maxG = 0, maxB = 0;
+        int avgR = 0, avgG = 0, avgB = 0;
 
         fixed (Color32* src = pixels) {
             Color32* srcPos = src;
             for(int y = 0; y < NN_INPUT_HEIGHT_MAX; ++y) {
                 for(int x = 0; x < NN_INPUT_WIDTH_MAX; ++x) {
-                    rMax = Math.Max(rMax, srcPos->r);
-                    gMax = Math.Max(gMax, srcPos->g);
-                    bMax = Math.Max(bMax, srcPos->b);
-                    rMin = Math.Min(rMin, srcPos->r);
-                    gMin = Math.Min(gMin, srcPos->g);
-                    bMin = Math.Min(bMin, srcPos->b);
+                    minR = Math.Min(minR, srcPos->r);
+                    minG = Math.Min(minG, srcPos->g);
+                    minB = Math.Min(minB, srcPos->b);
+                    maxR = Math.Max(maxR, srcPos->r);
+                    maxG = Math.Max(maxG, srcPos->g);
+                    maxB = Math.Max(maxB, srcPos->b);
+                    avgR += srcPos->r;
+                    avgG += srcPos->g;
+                    avgB += srcPos->b;
+
                     ++srcPos;
                 }
             }
         }
+        avgR /= NN_INPUT_HEIGHT_MAX * NN_INPUT_WIDTH_MAX;
+        avgG /= NN_INPUT_HEIGHT_MAX * NN_INPUT_WIDTH_MAX;
+        avgB /= NN_INPUT_HEIGHT_MAX * NN_INPUT_WIDTH_MAX;
 
-        int max = Math.Max(rMax, Math.Max(gMax, bMax));
-        int min = Math.Min(rMin, Math.Min(gMin, bMin));
-        float saturation = (max - min) / (float)max;
-        float brightness = max / 255.0f;;
-        float luminance = (max + min) / 2.0f / 255.0f;
+        int lumR = (maxR + minR) / 2;
+        int lumG = (maxG + minG) / 2;
+        int lumB = (maxB + minB) / 2;
 
-        float rBright = rMax / 255.0f;;
-        float gBright = gMax / 255.0f;;
-        float bBright = bMax / 255.0f;;
-        float rLum = (rMax + rMin) / 2.0f / 255.0f;
-        float gLum = (gMax + gMin) / 2.0f / 255.0f;
-        float bLum = (bMax + bMin) / 2.0f / 255.0f;
-        
-        //Debug.Log(rBright + " " + gBright + " " + bBright);
-        Debug.Log(rLum + " " + gLum + " " + bLum);
+        Color min = new Color(minR, minG, minB);
+        Color max = new Color(maxR, maxG, maxB);
+        Color avg = new Color(avgR, avgG, avgB);
+        Color lum = new Color(lumR, lumG, lumB);
 
-        return luminance;
+        return new Color[]{ min, max, avg, lum };
     }
 
     //NNからの出力をバッファに取り出す
@@ -283,13 +296,14 @@ class VNectManager {
             extractedJoints[key] = false;
         }
 
+        int srcNextPos = (int)HEATMAP_TYPE.Length;
         fixed (float*src = heatmapBuff){
             float* srcPos = src;
             for (int y = 0; y < heatmapHeight; ++y){
                 for (int x = 0; x < heatmapWidth; ++x){
                     foreach (string key in jointInfos.Keys){
                         float v = *srcPos;
-                        srcPos += (int)HEATMAP_TYPE.Length;
+                        srcPos += srcNextPos;
 
                         if (v < jointThreshold) { continue; }
 

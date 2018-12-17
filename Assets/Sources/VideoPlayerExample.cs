@@ -13,6 +13,11 @@ public class VideoPlayerExample :MonoBehaviour {
     public float ModelPositionX = 0.0f;
     public float ModelPositionY = 1.8f;
     public float LookForwardAngle = 30;
+    
+    //入力映像の色調整
+    public float ColorThresholdR = 0.5f;
+    public float ColorThresholdG = 0.5f;
+    public float ColorThresholdB = 0.5f;
 
     //前フレームのジョイント位置に対して今フレームのジョイント位置候補が、
     //画面サイズの何割離れていたら誤検出とみなすかの距離
@@ -24,11 +29,6 @@ public class VideoPlayerExample :MonoBehaviour {
     //ジョイントの平均値を取るための前フレーム数
     public int Joint2DLerpFramesCount = 2;
     public int Joint3DLerpFramesCount = 10;
-
-    //入力映像の色調整
-    public float AdjInputR = 0.5f;
-    public float AdjInputG = 0.5f;
-    public float AdjInputB = 0.5f;
 
     //サイズを変更した入力画像を複数枚用意する。検出後に平均して推定誤差を減らすため
     public bool UseMultiScale = true;
@@ -129,7 +129,7 @@ public class VideoPlayerExample :MonoBehaviour {
     void Update() {
         if (UseWebcam) {
             //ウェブカメラの映像をテクスチャに反映
-            var color32 = webcamTexture.GetPixels32();
+            Color32[] color32 = webcamTexture.GetPixels32();
             texture.SetPixels32(color32);
             texture.Apply();
 
@@ -154,9 +154,9 @@ public class VideoPlayerExample :MonoBehaviour {
         if (UseBoundingBox && initialized) { vnect.UpdateBoundingBox(ref boundingBox, videoWidth, videoHeight); }
         initialized = true;
 
-        Color adjColor = new Color(AdjInputR, AdjInputG, AdjInputB);
         Texture2D resizedTexture = ResizeTexture(texture);
-        vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, adjColor, UseLabeling);
+        Color colorThreshold = new Color(ColorThresholdR, ColorThresholdG, ColorThresholdB);
+        vnect.Update(resizedTexture, JointDistanceLimit, JointThreshold, colorThreshold, UseLabeling);
         Destroy(resizedTexture);
 
         isPosing = false;

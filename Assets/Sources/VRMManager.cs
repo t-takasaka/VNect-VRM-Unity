@@ -28,6 +28,7 @@ class VRMManager {
 
     public Dictionary<string, Vector3> Init(Dictionary<string, JointInfo> jointInfos, 
                                             float modelPositionX, float modelPositionY, float lookForwardAngle) {
+
         this.modelPositionX = modelPositionX;
         this.modelPositionY = modelPositionY;
         this.lookForwardAngle = lookForwardAngle;

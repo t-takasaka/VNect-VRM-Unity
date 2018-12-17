@@ -154,15 +154,15 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 4927806553749458, guid: 39b57c70650554a4ebe488ed1807f109, type: 2}
       propertyPath: m_LocalScale.x
-      value: 4.5
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 4927806553749458, guid: 39b57c70650554a4ebe488ed1807f109, type: 2}
       propertyPath: m_LocalScale.y
-      value: 4.5
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 4927806553749458, guid: 39b57c70650554a4ebe488ed1807f109, type: 2}
       propertyPath: m_LocalScale.z
-      value: 4.5
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 114727723079268488, guid: 39b57c70650554a4ebe488ed1807f109,
         type: 2}
@@ -395,13 +395,14 @@ MonoBehaviour:
   UseWebcam: 0
   ModelPositionX: 0
   ModelPositionY: 1.5
+  LookForwardAngle: 30
+  ColorThresholdR: 0.7
+  ColorThresholdG: 0.7
+  ColorThresholdB: 0.7
   JointDistanceLimit: 0.3
   JointThreshold: 0.5
-  Joint2DLerpFramesCount: 1
+  Joint2DLerpFramesCount: 2
   Joint3DLerpFramesCount: 10
-  AdjInputR: 0.8
-  AdjInputG: 0.8
-  AdjInputB: 0.8
   UseMultiScale: 1
   UseLabeling: 0
   UseBoundingBox: 0
@@ -409,7 +410,7 @@ MonoBehaviour:
   EnableNeck: 1
   EnableArms: 1
   EnableElbows: 1
-  EnableWrists: 1
+  EnableWrists: 0
   EnableLegs: 1
   EnableKnees: 1
   EnableFoots: 1
