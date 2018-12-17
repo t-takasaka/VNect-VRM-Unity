@@ -410,7 +410,7 @@ MonoBehaviour:
   EnableNeck: 1
   EnableArms: 1
   EnableElbows: 1
-  EnableWrists: 0
+  EnableWrists: 1
   EnableLegs: 1
   EnableKnees: 1
   EnableFoots: 1

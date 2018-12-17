@@ -156,11 +156,9 @@ class VRMManager {
             Vector3 childPos = joint3D.ContainsKey(childName) ? joint3D[childName] : ownPos;
             own2childDirs[key] = (childPos - ownPos).normalized;
 
-            if(!UseWorldRotate){
-                string parentName = jointInfos[key].parent;
-                Vector3 parentPos = joint3D.ContainsKey(parentName) ? joint3D[parentName] : ownPos;
-                parent2ownDirs[key] = (ownPos - parentPos).normalized;
-            }
+            string parentName = jointInfos[key].parent;
+            Vector3 parentPos = joint3D.ContainsKey(parentName) ? joint3D[parentName] : ownPos;
+            parent2ownDirs[key] = (ownPos - parentPos).normalized;
         }
         //自身と親、子の部位の向きから回転角度を出す
         foreach(string key in jointInfos.Keys){
@@ -196,6 +194,25 @@ class VRMManager {
                         }
                     }
                 }
+                if(key == "LeftWrist" || key == "RightWrist") {
+                    float wristAngleLimit = 60;
+                    Quaternion q = Quaternion.FromToRotation(parent2ownDirs[key], own2childDirs[key]);
+                    Vector3 angle = q.eulerAngles;
+                    if(angle.x >= 180.0f){ angle.x -= 360.0f; } 
+                    if(angle.y >= 180.0f){ angle.y -= 360.0f; } 
+                    if(angle.z >= 180.0f){ angle.z -= 360.0f; } 
+                    angle.x = Mathf.Clamp(angle.x, -wristAngleLimit, wristAngleLimit);
+                    angle.y = Mathf.Clamp(angle.y, -wristAngleLimit, wristAngleLimit);
+                    angle.z = Mathf.Clamp(angle.z, -wristAngleLimit, wristAngleLimit);
+                    if(angle.x < 0.0f){ angle.x += 360.0f; } 
+                    if(angle.y < 0.0f){ angle.y += 360.0f; } 
+                    if(angle.z < 0.0f){ angle.z += 360.0f; } 
+
+                    string parentName = jointInfos[key].parent;
+                    q = Quaternion.FromToRotation(bindDirs[parentName], own2childDirs[parentName]);
+                    rot = q * Quaternion.Euler(angle);
+                }
+
                 joints[key].rotation = rot;
 
                 //モデルの位置調整

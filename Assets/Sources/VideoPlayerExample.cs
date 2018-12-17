@@ -79,7 +79,7 @@ public class VideoPlayerExample :MonoBehaviour {
 
     void Start() {
         Application.runInBackground = true;
-
+        
         RectTransform rectTransform = GetComponent<RectTransform>();
         Renderer renderer = GetComponent<Renderer>();
 
