@@ -57,9 +57,9 @@ public class VideoPlayerExample :MonoBehaviour {
     public bool DrawInputTensorBuff = false;
     public bool DebugDrawHeatmap = false;
     public bool DebugDrawHeatmapBuff = false;
-    public bool DrawHeatmapLabel = false;
-    public bool DrawResults2D = true;
-    public bool DrawResults3D = true;
+    public bool DebugDrawHeatmapLabel = false;
+    public bool DebugDrawResults2D = true;
+    public bool DebugDrawResults3D = true;
 
     private DebugRenderer debugRenderer;
 
@@ -196,26 +196,29 @@ public class VideoPlayerExample :MonoBehaviour {
         }
         //NNから出力されたデータの確認用
         if(DebugDrawHeatmap){
-            //debugRenderer.DebugDrawHeatmap(vnect.nnOutputPtr, vnect.SHAPE_SCALES, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
-            debugRenderer.DebugDrawHeatmap2(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
+            //debugRenderer.DebugDrawHeatmap(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
+            //debugRenderer.DebugDrawHeatmap2(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
+            debugRenderer.DebugDrawHeatmap3(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
         }
         //処理用バッファの確認用
         else if(DebugDrawHeatmapBuff){
-            //debugRenderer.DebugDrawHeatmapBuff(vnect.heatmapBuff, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
-            debugRenderer.DebugDrawHeatmapBuff2(vnect.heatmapBuff, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
+            debugRenderer.DebugDrawHeatmapBuff(vnect.heatmapBuff, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
+            //debugRenderer.DebugDrawHeatmapBuff2(vnect.heatmapBuff, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
         }
         //ラベリング用バッファの確認用
-        else if(DrawHeatmapLabel){
+        else if(DebugDrawHeatmapLabel){
             debugRenderer.DebugDrawHeatmapLabel(vnect.heatmapLabel, vnect.heatmapLabelCount, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
             //debugRenderer.DebugDrawHeatmapLabel2(vnect.heatmapLabel, vnect.heatmapLabelCount, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
         }
         //2Dジョイントの確認用
-        if(DrawResults2D){
-            debugRenderer.DrawResults2D(vnect.joint2D, jointInfos);
+        if(DebugDrawResults2D){
+            //debugRenderer.DrawResults2D(vnect.joint2D, jointInfos);
+            debugRenderer.DrawResults2D2(vnect.joint2D, jointInfos);
         }
         //3Dジョイントの確認用
-        if(DrawResults3D){
-            debugRenderer.DrawResults3D(vnect.joint3D, jointInfos);
+        if(DebugDrawResults3D){
+            //debugRenderer.DrawResults3D(vnect.joint3D, jointInfos);
+            debugRenderer.DrawResults3D2(vnect.joint2D, vnect.joint3D, jointInfos);
         }
     }
 

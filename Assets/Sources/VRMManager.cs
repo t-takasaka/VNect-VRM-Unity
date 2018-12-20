@@ -195,7 +195,7 @@ class VRMManager {
                     }
                 }
                 if(key == "LeftWrist" || key == "RightWrist") {
-                    float wristAngleLimit = 60;
+                    float wristAngleLimit = 30;
                     Quaternion q = Quaternion.FromToRotation(parent2ownDirs[key], own2childDirs[key]);
                     Vector3 angle = q.eulerAngles;
                     if(angle.x >= 180.0f){ angle.x -= 360.0f; } 

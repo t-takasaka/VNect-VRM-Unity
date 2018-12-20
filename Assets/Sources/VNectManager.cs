@@ -47,7 +47,7 @@ class VNectManager {
         this.joint2DLerpFramesCount = joint2DLerpFramesCount; 
         this.joint3DLerpFramesCount = joint3DLerpFramesCount; 
 
-        nnShapeScales = useMultiScale ? new float[]{ 1.0f, 0.7f } : new float[] { 1.0f };
+        nnShapeScales = useMultiScale ? new float[]{ 1.0f, 0.9f, 0.8f } : new float[] { 1.0f };
         nnInputBuff = new float[NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * PIXEL_SIZE * nnShapeScales.Length];
         heatmapLabelCount = new int[NN_JOINT_COUNT];
 

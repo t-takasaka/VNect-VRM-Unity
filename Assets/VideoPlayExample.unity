@@ -343,7 +343,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1246053710}
   m_LocalRotation: {x: 0, y: 0, z: -1, w: 0}
-  m_LocalPosition: {x: 10, y: 5, z: 0}
+  m_LocalPosition: {x: 9, y: 5, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 0}
   m_Children: []
   m_Father: {fileID: 0}
@@ -393,14 +393,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UseWebcam: 0
-  ModelPositionX: 0
-  ModelPositionY: 1.5
+  ModelPositionX: 0.5
+  ModelPositionY: 1.6
   LookForwardAngle: 30
-  ColorThresholdR: 0.7
-  ColorThresholdG: 0.7
-  ColorThresholdB: 0.7
+  ColorThresholdR: 0.9
+  ColorThresholdG: 0.9
+  ColorThresholdB: 0.9
   JointDistanceLimit: 0.3
-  JointThreshold: 0.5
+  JointThreshold: 0.7
   Joint2DLerpFramesCount: 2
   Joint3DLerpFramesCount: 10
   UseMultiScale: 1
@@ -413,14 +413,14 @@ MonoBehaviour:
   EnableWrists: 1
   EnableLegs: 1
   EnableKnees: 1
-  EnableFoots: 1
+  EnableFoots: 0
   EnableToeBases: 0
   DrawInputTensorBuff: 0
-  DebugDrawHeatmap: 0
+  DebugDrawHeatmap: 1
   DebugDrawHeatmapBuff: 0
-  DrawHeatmapLabel: 0
-  DrawResults2D: 1
-  DrawResults3D: 0
+  DebugDrawHeatmapLabel: 0
+  DebugDrawResults2D: 1
+  DebugDrawResults3D: 1
 --- !u!222 &1571320482
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -442,7 +442,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 5, y: 0}
+  m_AnchoredPosition: {x: 4, y: 0}
   m_SizeDelta: {x: 368, y: 368}
   m_Pivot: {x: 0, y: 0}
 --- !u!328 &1571320484
@@ -586,7 +586,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 6
+  orthographic size: 5
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2

@@ -139,6 +139,37 @@ public class DebugRenderer :MonoBehaviour {
 
         DrawEnd();
     }
+    public unsafe void DebugDrawHeatmap3(IntPtr nnOutputPtr, float[] scales, int scaleNum, int height, int width, int jointCount) {
+        float displayScale = 0.05f * 256.0f / 368.0f;
+        float displayX = 197, displayY = 0;
+
+        float* src = (float*)nnOutputPtr;
+        int padHeight = (int)((height - (height * scales[scaleNum])) / 2);
+        int padWidth = (int)((width - (width * scales[scaleNum])) / 2);
+
+        DrawBegin();
+        Color color = Color.black;
+        int srcChannel = scaleNum * height * width;
+
+        for (int y = 0; y < height; ++y) {
+            GL.Begin(GL.TRIANGLE_STRIP);
+            int srcHeight = ((int)(y * scales[scaleNum]) + padHeight) * width;
+            for (int x = 0; x < width; ++x) {
+                int srcWidth = ((int)(x * scales[scaleNum]) + padWidth);
+                int srcPos = (srcChannel + srcHeight + srcWidth) * jointCount;
+                float v = 0;
+                for (int j = 0; j < jointCount; ++j) {
+                    v += *(src + srcPos + j);
+                }
+                color.r = color.g = color.b = Mathf.Min(1.0f, Mathf.Max(0.0f, v));
+                GL.Color(color);
+                GL.Vertex3((x + displayX) * displayScale, (y + displayY) * displayScale, 0f);
+                GL.Vertex3((x + displayX) * displayScale, (y + displayY + 1) * displayScale, 0f);
+            }
+            GL.End();
+        }
+        DrawEnd();
+    }
     public void DebugDrawHeatmapBuff(float[,,,] heatmapBuff, int height, int width, int jointCount) {
         int heatmapType = 0;
         int slide = 70; //nnInputWidthが46なのでこれくらい
@@ -175,7 +206,7 @@ public class DebugRenderer :MonoBehaviour {
     }
     public void DebugDrawHeatmapBuff2(float[,,,] heatmapBuff, int height, int width, int poolsSize, Dictionary<string, JointInfo> jointInfos) {
         int jointCount = jointInfos.Count;
-        int heatmapType = 3;
+        int heatmapType = 0;
 
         DrawBegin();
         Color color = Color.red;
@@ -293,6 +324,37 @@ public class DebugRenderer :MonoBehaviour {
         GL.End();
         DrawEnd();
     }
+    public void DrawResults2D2(Dictionary<string, Vector2> joint2D, Dictionary<string, JointInfo> jointInfos) {
+        DrawSkeleton2(joint2D, jointInfos);
+    }
+    private void DrawSkeleton2(Dictionary<string, Vector2> joint2d, Dictionary<string, JointInfo> jointInfos) {
+        float displayScale = 0.06f * 256.0f / 368.0f;
+        float displayX = 6.7f, displayY = 1.5f;
+
+        const bool drawEyes = false;
+        const bool drawHand = false;
+        const bool drawToeBase = false;
+
+        DrawBegin();
+        GL.Begin(GL.QUADS);
+        foreach (string key in jointInfos.Keys) {
+            if(!drawEyes && key == "Eyes"){ continue; }
+            if(!drawHand && (key == "LeftHand" || key == "RightHand")){ continue; }
+            if(!drawToeBase && (key == "LeftToeBase" || key == "RightToeBase")){ continue; }
+
+            string target = jointInfos[key].parent;
+            if (!joint2d.ContainsKey(target)) { continue; }
+
+            Vector2 v0 = joint2d[key];
+            Vector2 v1 = joint2d[target];
+            GL.Color(jointInfos[key].color);
+            DrawLine2D(new Vector3(v0.x * displayScale + displayX, v0.y * displayScale + displayY),
+                        new Vector3(v1.x * displayScale + displayX, v1.y * displayScale + displayY), 0.02f);
+        }
+        GL.End();
+        DrawEnd();
+    }
+
     private void DrawLine2D(Vector3 v0, Vector3 v1, float lineWidth) {
         Vector3 n = ((new Vector3(v1.y, v0.x, 0.0f)) - (new Vector3(v0.y, v1.x, 0.0f))).normalized * lineWidth;
         GL.Vertex3(v0.x - n.x, v0.y - n.y, 0.0f);
@@ -301,12 +363,12 @@ public class DebugRenderer :MonoBehaviour {
         GL.Vertex3(v1.x - n.x, v1.y - n.y, 0.0f);
     }
 
-    private void CreategizmoJoints(Dictionary<string, JointInfo> jointInfos) {
+    private void CreategizmoJoints(Dictionary<string, JointInfo> jointInfos, float sphereSize) {
         foreach (string key in jointInfos.Keys) {
             gizmoSphere[key] = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             gizmoSphere[key].name = key + "Sphere";
             gizmoSphere[key].transform.localPosition = new Vector3(0, 0, 0);
-            gizmoSphere[key].transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
+            gizmoSphere[key].transform.localScale = new Vector3(sphereSize, sphereSize, sphereSize);
             Material mat = gizmoSphere[key].GetComponent<Renderer>().material;
             mat.color = jointInfos[key].color;
 
@@ -354,7 +416,7 @@ public class DebugRenderer :MonoBehaviour {
         }
     }
     public void DrawResults3D(Dictionary<string, Vector3> joint3D, Dictionary<string, JointInfo> jointInfos) {
-        if (gizmoSphere.Count == 0) { CreategizmoJoints(jointInfos); }
+        if (gizmoSphere.Count == 0) { CreategizmoJoints(jointInfos, 0.2f); }
 
         //関節部分のスフィアを移動
         foreach (string key in jointInfos.Keys) {
@@ -385,6 +447,47 @@ public class DebugRenderer :MonoBehaviour {
 
             gizmoCylinder[key].transform.localPosition = new Vector3(0, distance, 0);
             gizmoCylinder[key].transform.localScale = new Vector3(0.5f, distance, 0.5f);
+        }
+    }
+    public void DrawResults3D2(Dictionary<string, Vector2> joint2D, Dictionary<string, Vector3> joint3D, Dictionary<string, JointInfo> jointInfos) {
+        float cylinderSize= 0.6f;
+        if (gizmoSphere.Count == 0) { 
+            joint3DPosition = new Vector3(-4.4f, -1.2f, 0);
+            joit3DScale = 0.17f;
+            CreategizmoJoints(jointInfos, 0.15f); 
+        }
+
+        Vector3 pos = -joint2D["Hips"] / 12;
+
+        //関節部分のスフィアを移動
+        foreach (string key in jointInfos.Keys) {
+            if (!jointInfos[key].enable) { continue; }
+            string childName = jointInfos[key].child;
+            if (!joint3D.ContainsKey(childName)) { continue; }
+
+            Vector3 ownPos = joint3D[key];
+            Vector3 childPos = joint3D[childName];
+            Vector3 dir = childPos - ownPos;
+            Quaternion rot = Quaternion.FromToRotation(Vector3.up, dir);
+            gizmoSphere[key].transform.position = ownPos * joit3DScale + joint3DPosition + pos;
+            gizmoSphere[key].transform.rotation = rot;
+        }
+
+        //スフィアを全部移動し終わってから骨部分のシリンダーの長さを変更
+        foreach (string key in jointInfos.Keys) {
+            if (!jointInfos[key].enable) { continue; }
+
+            float distance = 1;
+
+            string childName = jointInfos[key].child;
+            Vector3 ownPos = gizmoSphere[key].transform.position;
+            if (gizmoSphere.ContainsKey(childName)) {
+                Vector3 childPos = gizmoSphere[childName].transform.position;
+                distance = (childPos - ownPos).magnitude * 3f;
+            }
+
+            gizmoCylinder[key].transform.localPosition = new Vector3(0, distance, 0);
+            gizmoCylinder[key].transform.localScale = new Vector3(cylinderSize, distance, cylinderSize);
         }
     }
 }
