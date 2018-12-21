@@ -198,7 +198,7 @@ public class VideoPlayerExample :MonoBehaviour {
         if(DebugDrawHeatmap){
             //debugRenderer.DebugDrawHeatmap(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
             //debugRenderer.DebugDrawHeatmap2(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_POOL_SIZE, jointInfos);
-            debugRenderer.DebugDrawHeatmap3(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
+            debugRenderer.DebugDrawHeatmapSide(vnect.nnOutputPtr, vnect.nnShapeScales, scaleNum, vnect.heatmapHeight, vnect.heatmapWidth, vnect.NN_JOINT_COUNT);
         }
         //処理用バッファの確認用
         else if(DebugDrawHeatmapBuff){
@@ -213,12 +213,12 @@ public class VideoPlayerExample :MonoBehaviour {
         //2Dジョイントの確認用
         if(DebugDrawResults2D){
             //debugRenderer.DrawResults2D(vnect.joint2D, jointInfos);
-            debugRenderer.DrawResults2D2(vnect.joint2D, jointInfos);
+            debugRenderer.DrawResults2DSide(vnect.joint2D, jointInfos);
         }
         //3Dジョイントの確認用
         if(DebugDrawResults3D){
             //debugRenderer.DrawResults3D(vnect.joint3D, jointInfos);
-            debugRenderer.DrawResults3D2(vnect.joint2D, vnect.joint3D, jointInfos);
+            debugRenderer.DrawResults3DSide(vnect.joint2D, vnect.joint3D, jointInfos);
         }
     }
 

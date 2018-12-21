@@ -5,6 +5,7 @@ using UnityEngine;
 public class JointInfo {
     public string name;
     public int index;
+    public int flip = 0;
     public string child;
     public string parent;
     public Color color;
@@ -47,6 +48,23 @@ public class JointInfo {
         Add(jointInfos, "LeftHand", index++, "", "LeftWrist", Color.gray, HumanBodyBones.LeftHand, "J_Bip_L_Middle1");    //18
         Add(jointInfos, "RightToeBase", index++, "", "RightFoot", Color.gray, HumanBodyBones.RightToes, "J_Bip_R_ToeBase");    //19 
         Add(jointInfos, "LeftToeBase", index++, "", "LeftFoot", Color.gray, HumanBodyBones.LeftToes, "J_Bip_L_ToeBase");    //20 
+
+        jointInfos["RightArm"].flip = jointInfos["LeftArm"].index - jointInfos["RightArm"].index;
+        jointInfos["RightElbow"].flip = jointInfos["LeftElbow"].index - jointInfos["RightElbow"].index;
+        jointInfos["RightWrist"].flip = jointInfos["LeftWrist"].index - jointInfos["RightWrist"].index;
+        jointInfos["LeftArm"].flip = jointInfos["RightArm"].index - jointInfos["LeftArm"].index;
+        jointInfos["LeftElbow"].flip = jointInfos["RightElbow"].index - jointInfos["LeftElbow"].index;
+        jointInfos["LeftWrist"].flip = jointInfos["RightWrist"].index - jointInfos["LeftWrist"].index;
+        jointInfos["RightLeg"].flip = jointInfos["LeftLeg"].index - jointInfos["RightLeg"].index;
+        jointInfos["RightKnee"].flip = jointInfos["LeftKnee"].index - jointInfos["RightKnee"].index;
+        jointInfos["RightFoot"].flip = jointInfos["LeftFoot"].index - jointInfos["RightFoot"].index;
+        jointInfos["LeftLeg"].flip = jointInfos["RightLeg"].index - jointInfos["LeftLeg"].index;
+        jointInfos["LeftKnee"].flip = jointInfos["RightKnee"].index - jointInfos["LeftKnee"].index;
+        jointInfos["LeftFoot"].flip = jointInfos["RightFoot"].index - jointInfos["LeftFoot"].index;
+        jointInfos["RightHand"].flip = jointInfos["LeftHand"].index - jointInfos["RightHand"].index;
+        jointInfos["LeftHand"].flip = jointInfos["RightHand"].index - jointInfos["LeftHand"].index;
+        jointInfos["RightToeBase"].flip = jointInfos["LeftToeBase"].index - jointInfos["RightToeBase"].index;
+        jointInfos["LeftToeBase"].flip = jointInfos["RightToeBase"].index - jointInfos["LeftToeBase"].index;
     }
     static private void Add(Dictionary<string, JointInfo> jointInfos, string name, int index, string child, string parent, 
                             Color color, HumanBodyBones human, string vroid, bool enable = true) {

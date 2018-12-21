@@ -42,12 +42,17 @@ class VNectManager {
     private TFSession session;
     private TFShape shape;
 
+    //入力映像を増やして精度を上げる場合に、縮小したものだけでなく等倍で左右反転したものも使う
+    private bool flipHorizontal = true;
+
     public void Init(Dictionary<string, JointInfo> jointInfos, int joint2DLerpFramesCount, int joint3DLerpFramesCount, bool useMultiScale) {
         this.jointInfos = jointInfos;
         this.joint2DLerpFramesCount = joint2DLerpFramesCount; 
         this.joint3DLerpFramesCount = joint3DLerpFramesCount; 
 
         nnShapeScales = useMultiScale ? new float[]{ 1.0f, 0.9f, 0.8f } : new float[] { 1.0f };
+        if(useMultiScale && flipHorizontal){ nnShapeScales[1] = 1.0f; nnShapeScales[2] = 0.9f; }
+
         nnInputBuff = new float[NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * PIXEL_SIZE * nnShapeScales.Length];
         heatmapLabelCount = new int[NN_JOINT_COUNT];
 
@@ -93,17 +98,22 @@ class VNectManager {
         Extract3DJoint();
     }
 
+    private float[] csInvShapeScales;
+    private int[] csShapeWidth;
+    private int[] csShapeHeight;
     private TFTensor CreateShapes(Color32[] pixels, Color colorThreshold) {
         const float ItoF = 1.0f / 255.0f;
 
         //縮小率の逆数、シェイプの幅と高さの初期化
-        float[] invShapeScales = new float[nnShapeScales.Length];
-        int[] shapeWidth = new int[nnShapeScales.Length];
-        int[] shapeHeight = new int[nnShapeScales.Length];
+        if(csInvShapeScales == null) {
+            csInvShapeScales = new float[nnShapeScales.Length];
+            csShapeWidth = new int[nnShapeScales.Length];
+            csShapeHeight = new int[nnShapeScales.Length];
+        }
         for (int i = 0; i < nnShapeScales.Length; ++i) {
-            invShapeScales[i] = 1.0f / nnShapeScales[i];
-            shapeWidth[i] = (int)(NN_INPUT_WIDTH_MAX * nnShapeScales[i]);
-            shapeHeight[i] = (int)(NN_INPUT_HEIGHT_MAX * nnShapeScales[i]);
+            csInvShapeScales[i] = 1.0f / nnShapeScales[i];
+            csShapeWidth[i] = (int)(NN_INPUT_WIDTH_MAX * nnShapeScales[i]);
+            csShapeHeight[i] = (int)(NN_INPUT_HEIGHT_MAX * nnShapeScales[i]);
         }
 
         //Color[] info = GetColorInfo(pixels);
@@ -120,9 +130,9 @@ class VNectManager {
 
         Array.Clear(nnInputBuff, 0, nnInputBuff.Length);
         for (int scaleNum = 0; scaleNum < nnShapeScales.Length; ++scaleNum) {
-            int height = shapeHeight[scaleNum];
-            int width = shapeWidth[scaleNum];
-            float invShapeScale = invShapeScales[scaleNum];
+            int height = csShapeHeight[scaleNum];
+            int width = csShapeWidth[scaleNum];
+            float invShapeScale = csInvShapeScales[scaleNum];
 
             //縮小した分だけパディングする
             int padHeight = (NN_INPUT_HEIGHT_MAX - height) / 2;
@@ -130,6 +140,9 @@ class VNectManager {
 
             //scalesの分だけdstの書き込み先をずらす
             int padScale = NN_INPUT_WIDTH_MAX * NN_INPUT_HEIGHT_MAX * scaleNum;
+
+            //左右反転が有効で且つ奇数回目なら反転する
+            bool _flipHorizontal = flipHorizontal && (scaleNum % 2 == 1);
 
             for (int y = 0; y < height; ++y) {
                 //縮小後のdstが基準なのでinvScale倍した位置のsrcから色情報を取得する
@@ -139,20 +152,17 @@ class VNectManager {
                 int flipHeight = ((NN_INPUT_HEIGHT_MAX - 1) - (padHeight + y)) * NN_INPUT_WIDTH_MAX;
 
                 for (int x = 0; x < width; ++x) {
-                    int srcWidth = (int)(x * invShapeScale);
+                    int flippableX = x;
+                    if(_flipHorizontal){ flippableX = (width - 1 ) - flippableX;}
+
+                    int srcWidth = (int)(flippableX * invShapeScale);
                     Color32 src = pixels[srcHeight + srcWidth];
 
                     int dstPos = (padScale + flipHeight + padWidth + x) * PIXEL_SIZE;
-                    if (RGB2BGR) {
-                        nnInputBuff[dstPos + 0] = src.b * ItoF - thresholdB;
-                        nnInputBuff[dstPos + 1] = src.g * ItoF - thresholdG;
-                        nnInputBuff[dstPos + 2] = src.r * ItoF - thresholdR;
-
-                    } else {
-                        nnInputBuff[dstPos + 0] = src.r * ItoF - thresholdR;
-                        nnInputBuff[dstPos + 1] = src.g * ItoF - thresholdG;
-                        nnInputBuff[dstPos + 2] = src.b * ItoF - thresholdB;
-                    }
+                    //RBGではなくBGRにしているので注意
+                    nnInputBuff[dstPos + 0] = src.b * ItoF - thresholdB;
+                    nnInputBuff[dstPos + 1] = src.g * ItoF - thresholdG;
+                    nnInputBuff[dstPos + 2] = src.r * ItoF - thresholdR;
                 }
             }
         }
@@ -201,10 +211,20 @@ class VNectManager {
         return new Color[]{ min, max, avg, lum };
     }
 
+    private int[,] flipIndexStrides = null;
     //NNからの出力をバッファに取り出す
     //後工程で正規化するのでスケール分は足し込んでいい
     private unsafe void ExtractHeatmaps(IntPtr nnOutputPtr, IntPtr nnOutputPtrX, IntPtr nnOutputPtrY, IntPtr nnOutputPtrZ) {
         Array.Clear(heatmapBuff, 0, heatmapBuff.Length);
+
+        //多重ループ内で辞書を使いたくないので必要なものだけ配列に確保する
+        if (flipIndexStrides == null) {
+            flipIndexStrides = new int[2, jointInfos.Count];
+            foreach (string key in jointInfos.Keys){ 
+                flipIndexStrides[0, jointInfos[key].index] = 0; 
+                flipIndexStrides[1, jointInfos[key].index] = jointInfos[key].flip; 
+            }
+        }
 
         fixed (float* dst = heatmapBuff) {
             float* src = (float*)nnOutputPtr;
@@ -215,24 +235,35 @@ class VNectManager {
                 int padHeight = (int)((heatmapHeight - (heatmapHeight * nnShapeScales[scaleNum])) / 2);
                 int padWidth = (int)((heatmapWidth - (heatmapWidth * nnShapeScales[scaleNum])) / 2);
 
+                //左右反転が有効で且つ奇数回目なら反転する
+                bool _flipHorizontal = flipHorizontal && (scaleNum % 2 == 1);
+                int flipStrideNum = _flipHorizontal ? 1 : 0;
+
+                //フリップした場合、横方向のヒートマップは符号も入れ替える必要がある
+                float signX = _flipHorizontal ? -1 : 1;
+
                 float* dstPos = dst;
                 int srcChannel = scaleNum * heatmapHeight * heatmapWidth;
                 for (int y = 0; y < heatmapHeight; ++y) {
                     int srcHeight = ((int)(y * nnShapeScales[scaleNum]) + padHeight) * heatmapWidth;
 
                     for (int x = 0; x < heatmapWidth; ++x) {
-                        int srcWidth = ((int)(x * nnShapeScales[scaleNum]) + padWidth);
+                        int flippableX = x;
+                        if(_flipHorizontal){ flippableX = (heatmapWidth - 1 ) - flippableX; }
+                        int srcWidth = ((int)(flippableX * nnShapeScales[scaleNum]) + padWidth);
                         int srcPos = (srcChannel + srcHeight + srcWidth) * NN_JOINT_COUNT;
 
                         float* _src = src + srcPos;
                         float* _srcX = srcX + srcPos;
                         float* _srcY = srcY + srcPos;
                         float* _srcZ = srcZ + srcPos;
-                        for (int j = 0; j < NN_JOINT_COUNT; ++j) {
-                            *(dstPos++) += *(_src++);
-                            *(dstPos++) += *(_srcX++);
-                            *(dstPos++) += *(_srcY++);
-                            *(dstPos++) += *(_srcZ++);
+                        
+                        for (int j = 0; j < NN_JOINT_COUNT; ++j){
+                            int stride = flipIndexStrides[flipStrideNum, j];
+                            *(dstPos++) += *(stride + _src++);
+                            *(dstPos++) += *(stride + _srcX++) * signX;
+                            *(dstPos++) += *(stride + _srcY++);
+                            *(dstPos++) += *(stride + _srcZ++);
                         }
                     }
                 }
@@ -285,15 +316,24 @@ class VNectManager {
         }
     }
 
-    private Dictionary<string, Vector2> preFrameJoint2D = new Dictionary<string, Vector2>();
-    private Dictionary<string, float> nearestDistance = new Dictionary<string, float>();
+    private Vector2[] h2jPreFrameJoint2D;
+    private Vector2[] h2jNewFrameJoint2D;
+    private float[] h2jNearestDistance;
+    private bool[] h2jExtractedJoints;
     private unsafe void Heatmap2Joint(float distanceLimit, float jointThreshold) {
-        preFrameJoint2D.Clear();
-        nearestDistance.Clear();
+        if(h2jPreFrameJoint2D == null) {
+            h2jPreFrameJoint2D = new Vector2[jointInfos.Count];
+            h2jNewFrameJoint2D = new Vector2[jointInfos.Count];
+            h2jNearestDistance = new float[jointInfos.Count];
+            h2jExtractedJoints = new bool[jointInfos.Count];
+        }
+        //多重ループ内で辞書を使いたくないので必要なものだけ配列に確保する
         foreach (string key in jointInfos.Keys) {
-            preFrameJoint2D[key] = joint2D[key];
-            nearestDistance[key] = Mathf.Infinity;
-            extractedJoints[key] = false;
+            int i = jointInfos[key].index;
+            h2jPreFrameJoint2D[i] = joint2D[key];
+            h2jNewFrameJoint2D[i] = Vector2.zero;
+            h2jNearestDistance[i] = Mathf.Infinity;
+            h2jExtractedJoints[i] = false;
         }
 
         int srcNextPos = (int)HEATMAP_TYPE.Length;
@@ -301,28 +341,35 @@ class VNectManager {
             float* srcPos = src;
             for (int y = 0; y < heatmapHeight; ++y){
                 for (int x = 0; x < heatmapWidth; ++x){
-                    foreach (string key in jointInfos.Keys){
+                    for (int j = 0; j < NN_JOINT_COUNT; ++j){
                         float v = *srcPos;
                         srcPos += srcNextPos;
 
                         if (v < jointThreshold) { continue; }
 
-                        float w = x - preFrameJoint2D[key].x;
-                        float h = y - preFrameJoint2D[key].y;
+                        float w = x - h2jPreFrameJoint2D[j].x;
+                        float h = y - h2jPreFrameJoint2D[j].y;
                         float distance = w * w + h * h;
 
                         //他のラベルの方が前回のジョイント位置に近い
-                        if (nearestDistance[key] <= distance) { continue; }
+                        if (h2jNearestDistance[j] <= distance) { continue; }
 
                         //前回のジョイント位置から遠いため誤検出とみなす
                         if (distance > distanceLimit) { continue; }
 
-                        nearestDistance[key] = distance;
-                        joint2D[key] = new Vector2(x, y);
-                        extractedJoints[key] = true;
+                        h2jNearestDistance[j] = distance;
+                        h2jNewFrameJoint2D[j] = new Vector2(x, y);
+                        h2jExtractedJoints[j] = true;
                     }
                 }
             }
+        }
+
+        //配列から辞書に移す
+        foreach (string key in jointInfos.Keys) {
+            int i = jointInfos[key].index;
+            extractedJoints[key] = h2jExtractedJoints[i];
+            joint2D [key] = h2jNewFrameJoint2D[i];
         }
     }
     //ラベル番号beforをafterに変更

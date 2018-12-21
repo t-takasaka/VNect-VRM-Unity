@@ -139,7 +139,7 @@ public class DebugRenderer :MonoBehaviour {
 
         DrawEnd();
     }
-    public unsafe void DebugDrawHeatmap3(IntPtr nnOutputPtr, float[] scales, int scaleNum, int height, int width, int jointCount) {
+    public unsafe void DebugDrawHeatmapSide(IntPtr nnOutputPtr, float[] scales, int scaleNum, int height, int width, int jointCount) {
         float displayScale = 0.05f * 256.0f / 368.0f;
         float displayX = 197, displayY = 0;
 
@@ -324,7 +324,7 @@ public class DebugRenderer :MonoBehaviour {
         GL.End();
         DrawEnd();
     }
-    public void DrawResults2D2(Dictionary<string, Vector2> joint2D, Dictionary<string, JointInfo> jointInfos) {
+    public void DrawResults2DSide(Dictionary<string, Vector2> joint2D, Dictionary<string, JointInfo> jointInfos) {
         DrawSkeleton2(joint2D, jointInfos);
     }
     private void DrawSkeleton2(Dictionary<string, Vector2> joint2d, Dictionary<string, JointInfo> jointInfos) {
@@ -449,7 +449,7 @@ public class DebugRenderer :MonoBehaviour {
             gizmoCylinder[key].transform.localScale = new Vector3(0.5f, distance, 0.5f);
         }
     }
-    public void DrawResults3D2(Dictionary<string, Vector2> joint2D, Dictionary<string, Vector3> joint3D, Dictionary<string, JointInfo> jointInfos) {
+    public void DrawResults3DSide(Dictionary<string, Vector2> joint2D, Dictionary<string, Vector3> joint3D, Dictionary<string, JointInfo> jointInfos) {
         float cylinderSize= 0.6f;
         if (gizmoSphere.Count == 0) { 
             joint3DPosition = new Vector3(-4.4f, -1.2f, 0);

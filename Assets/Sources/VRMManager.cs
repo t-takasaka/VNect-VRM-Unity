@@ -195,6 +195,7 @@ class VRMManager {
                     }
                 }
                 if(key == "LeftWrist" || key == "RightWrist") {
+                    //TODO：インスペクタから変更できるようにする
                     float wristAngleLimit = 30;
                     Quaternion q = Quaternion.FromToRotation(parent2ownDirs[key], own2childDirs[key]);
                     Vector3 angle = q.eulerAngles;
