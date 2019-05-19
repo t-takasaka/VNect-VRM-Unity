@@ -4,29 +4,37 @@ A sample that reflects the attitude estimated by VNect in the VRM file.
 You can process video of webcam and movie files in real time.
 
 ## Environment
--VRM uses the model exported from VRoid.
+- VRM uses the model exported from VRoid.
+
 https://vroid.pixiv.net/
 
 - I am using UniVRM.
 Download unitypackage from the following repository and import it to Unity
+
 https://github.com/dwango/UniVRM/releases
 
 - I am using TensorFlowSharp
 Download unitypackage from the following repository and import it to Unity
+
 https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Basic-Guide.md
 
 You can speed up libtensorflow.dll included in TensorFlowSharp by replacing it for GPU.
 DLL is released as below. Please select the one that SIMD, CUDA, cuDNN matches your environment.
+
 https://github.com/fo40225/tensorflow-windows-wheel
+
 Rename tensorflow.dll in bin folder to libtensorflow.dll and replace with existing file.
 
 
 - In order to use TensorFlowSharp, we convert the weight of VNect for Caffe for TensorFlow
 1. Convert .caffemodel to .pkl with the following script
+
 https://github.com/timctho/VNect-tensorflow/blob/master/caffe_weights_to_pickle.py
 
 2. Modify the script below and convert. Pkl to. Txt
+
 https://github.com/timctho/VNect-tensorflow/blob/master/models/vnect_model.py
+
 Please add the following processing after saver = tf.train.Saver ().
   ````
   model.load_weights(sess, model_file)
@@ -51,5 +59,5 @@ http://gvv.mpi-inf.mpg.de/projects/VNect/
 https://github.com/timctho/VNect-tensorflow
 
 
-#license
+# license
 Licenses such as libraries, models, weights, learning data, etc. should follow the distributor.
