@@ -25,8 +25,8 @@ https://github.com/fo40225/tensorflow-windows-wheel
 
 Rename tensorflow.dll in bin folder to libtensorflow.dll and replace with existing file.
 
+In order to use TensorFlowSharp, we convert the weight of VNect for Caffe for TensorFlow
 
-- In order to use TensorFlowSharp, we convert the weight of VNect for Caffe for TensorFlow
 1. Convert .caffemodel to .pkl with the following script
 
 https://github.com/timctho/VNect-tensorflow/blob/master/caffe_weights_to_pickle.py
